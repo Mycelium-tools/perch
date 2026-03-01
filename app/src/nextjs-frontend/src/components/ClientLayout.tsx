@@ -4,26 +4,9 @@ import React, { useState, useContext, createContext } from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useRouter } from "next/navigation";
-// test
 
 // Define types and context
 type Chat = { id: string; title: string; history: { question: string; answer: string; context?: any; pending?: boolean }[] };
-
-type Policy = {
-  id: string;
-  name: string;
-  jurisdiction: string;
-  topic: string; // ← Add this line
-  stage: string;
-  status: string;
-  dueDate: string;
-  assignees: string[];
-  requiredDocs: string[];
-  attachments: number;
-  notes: string;
-  sourceChatId?: string;
-  sourceMessageIndex?: number;
-};
 
 type ChatContextType = {
   chats: Chat[];
@@ -32,10 +15,6 @@ type ChatContextType = {
   setActiveChatId: React.Dispatch<React.SetStateAction<string | null>>;
   chatHistory: { question: string; answer: string; context?: any; pending?: boolean }[];
   setChatHistory: React.Dispatch<React.SetStateAction<{ question: string; answer: string; context?: any; pending?: boolean }[]>>;
-  policies: Policy[];
-  setPolicies: React.Dispatch<React.SetStateAction<Policy[]>>;
-  addPolicy: (policy: Omit<Policy, 'id'>) => void;
-  openDraftThread: (policy: Policy) => void; // New function to navigate to source chat
 };
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -45,27 +24,6 @@ function ChatProvider({ children }: { children: React.ReactNode }) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<{ question: string; answer: string; context?: any; pending?: boolean }[]>([]);
-  const [policies, setPolicies] = useState<Policy[]>([]);
-
-  const addPolicy = (newPolicy: Omit<Policy, 'id'>) => {
-    const id = `POL-${Date.now()}`;
-    setPolicies(prev => [
-      ...prev,
-      { ...newPolicy, id, topic: newPolicy.topic || "animal welfare" }
-    ]);
-  };
-
-  const openDraftThread = (policy: Policy) => {
-    if (policy.sourceChatId && chats.find(chat => chat.id === policy.sourceChatId)) {
-      // Chat exists, navigate to it
-      setActiveChatId(policy.sourceChatId);
-      const sourceChat = chats.find(chat => chat.id === policy.sourceChatId);
-      if (sourceChat) {
-        setChatHistory(sourceChat.history);
-      }
-      // Router navigation will be handled in the layout component
-    }
-  };
 
   return (
     <ChatContext.Provider value={{
@@ -74,11 +32,7 @@ function ChatProvider({ children }: { children: React.ReactNode }) {
       activeChatId,
       setActiveChatId,
       chatHistory,
-      setChatHistory,
-      policies,
-      setPolicies,
-      addPolicy,
-      openDraftThread
+      setChatHistory
     }}>
       {children}
     </ChatContext.Provider>

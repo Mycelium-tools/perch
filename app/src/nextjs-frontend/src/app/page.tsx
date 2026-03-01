@@ -1,23 +1,20 @@
 'use client'
 
-import { FolderSearch, PencilLine, FileText, Workflow, Gavel, Users, CalendarClock, ChartLine, ArrowUp, Download, Copy } from "lucide-react";
-// import api from "@/api";
+import { FolderSearch, PencilLine, FileText, Workflow, Gavel, Users, CalendarClock, ChartLine, ArrowUp, Copy } from "lucide-react";
 import { FormEvent, JSX } from "react";
 import ReactMarkdown from "react-markdown";
 import { useState, useRef, useEffect } from "react";
 import BirdLoader from "../components/BirdLoader";
-import { useChat } from "../components/ClientLayout"; // adjust path if needed
+import { useChat } from "../components/ClientLayout";
 import Image from "next/image";
 
 type Chat = { id: string; title: string; history: { question: string; answer: string; context?: any; pending?: boolean }[] };
 
 export default function Home() {
-  const { chats, setChats, activeChatId, setActiveChatId, chatHistory, setChatHistory, addPolicy } = useChat();
+  const { chats, setChats, activeChatId, setActiveChatId, chatHistory, setChatHistory } = useChat();
   const [showContext, setShowContext] = useState<number | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
-  const [showPolicySnackbar, setShowPolicySnackbar] = useState(false);
-  const [addedToPolicyTracker, setAddedToPolicyTracker] = useState<number | null>(null);
 
   // Sync chatHistory changes back to the active chat
   useEffect(() => {
@@ -54,143 +51,6 @@ export default function Home() {
     }
   };
 
-  const extractPolicyInfo = (question: string, answer: string) => {
-    // Generate a meaningful policy name from question and answer content
-    const generatePolicyName = (question: string, answer: string) => {
-      const combinedText = question + " " + answer;
-
-      // Policy type keywords
-      const policyTypes = {
-        'ban': ['ban', 'prohibit', 'forbid', 'outlaw'],
-        'regulation': ['regulate', 'control', 'oversight', 'compliance'],
-        'ordinance': ['ordinance', 'municipal', 'local law'],
-        'licensing': ['license', 'permit', 'registration', 'certification'],
-        'protection': ['protect', 'welfare', 'safety', 'rights'],
-        'disclosure': ['disclosure', 'transparency', 'reporting', 'labeling']
-      };
-
-      // Animal/subject keywords
-      const subjects = [
-        'animal', 'dog', 'cat', 'horse', 'circus', 'wildlife', 'pet',
-        'fur', 'leather', 'foie gras', 'rodeo', 'carriage', 'tethering',
-        'breeding', 'puppy mill', 'backyard', 'enclosure', 'cage',
-        'plastic', 'straw', 'bag', 'pollution', 'environment'
-      ];
-
-      // Extract jurisdiction
-      const jurisdictionRegex = /(New York City|Chicago|Los Angeles|Austin|Boston|Seattle|Portland|San Francisco|SF|Miami|Denver|Phoenix|Philadelphia|Detroit|Baltimore|Atlanta|Dallas|Houston|San Antonio)/gi;
-      const jurisdictionMatch = combinedText.match(jurisdictionRegex);
-      const jurisdiction = jurisdictionMatch ? jurisdictionMatch[0] : '';
-
-      // Find policy type
-      let policyType = '';
-      for (const [type, keywords] of Object.entries(policyTypes)) {
-        if (keywords.some(keyword => combinedText.toLowerCase().includes(keyword))) {
-          policyType = type;
-          break;
-        }
-      }
-
-      // Find main subject
-      let mainSubject = '';
-      for (const subject of subjects) {
-        if (combinedText.toLowerCase().includes(subject)) {
-          mainSubject = subject;
-          break;
-        }
-      }
-
-      // Generate name based on extracted information
-      if (mainSubject && policyType) {
-        const typeWord = policyType === 'ban' ? 'Ban' :
-          policyType === 'regulation' ? 'Regulation' :
-            policyType === 'ordinance' ? 'Ordinance' :
-              policyType === 'licensing' ? 'Licensing' :
-                policyType === 'protection' ? 'Protection Act' :
-                  policyType === 'disclosure' ? 'Disclosure Rule' : 'Policy';
-
-        if (jurisdiction) {
-          return `${jurisdiction} ${mainSubject.charAt(0).toUpperCase() + mainSubject.slice(1)} ${typeWord}`;
-        } else {
-          return `${mainSubject.charAt(0).toUpperCase() + mainSubject.slice(1)} ${typeWord}`;
-        }
-      } else if (mainSubject) {
-        return jurisdiction ?
-          `${jurisdiction} ${mainSubject.charAt(0).toUpperCase() + mainSubject.slice(1)} Policy` :
-          `${mainSubject.charAt(0).toUpperCase() + mainSubject.slice(1)} Policy`;
-      } else if (policyType) {
-        const typeWord = policyType.charAt(0).toUpperCase() + policyType.slice(1);
-        return jurisdiction ? `${jurisdiction} ${typeWord}` : `New ${typeWord}`;
-      } else {
-        // Fallback: extract key nouns from question
-        const words = question.toLowerCase().split(/\s+/);
-        const keyWords = words.filter(word =>
-          word.length > 3 &&
-          !['that', 'this', 'with', 'from', 'they', 'have', 'been', 'will', 'can', 'could', 'would', 'should'].includes(word)
-        );
-
-        if (keyWords.length > 0) {
-          const firstKeyWord = keyWords[0].charAt(0).toUpperCase() + keyWords[0].slice(1);
-          return jurisdiction ? `${jurisdiction} ${firstKeyWord} Initiative` : `${firstKeyWord} Initiative`;
-        }
-      }
-
-      // Final fallback
-      return jurisdiction ? `${jurisdiction} Policy Initiative` : 'New Policy Initiative';
-    };
-
-    const policyName = generatePolicyName(question, answer);
-
-    // Try to extract jurisdiction from the text
-    const jurisdictionRegex = /(New York|NYC|Chicago|Los Angeles|Austin|Boston|Seattle|Portland|San Francisco|SF|Miami|Denver|Phoenix|Philadelphia|Detroit|Baltimore|Atlanta|Dallas|Houston|San Antonio)/gi;
-    const jurisdictionMatch = (question + " " + answer).match(jurisdictionRegex);
-    const jurisdiction = jurisdictionMatch ? jurisdictionMatch[0] : "TBD";
-
-    const topicName = "Animal Welfare";
-
-    // Determine policy type and set appropriate defaults
-    let stage = "Draft";
-    let requiredDocs = ["Fiscal Note", "Sponsor Memo"];
-
-    if (answer.includes("ordinance") || answer.includes("legislation")) {
-      stage = "Draft";
-    } else if (answer.includes("review") || answer.includes("analysis")) {
-      stage = "In Review";
-    }
-
-    return {
-      name: policyName,
-      jurisdiction: jurisdiction,
-      topic: topicName,
-      stage: stage,
-      status: "On Track",
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(), // 30 days from now
-      assignees: ["User"],
-      requiredDocs: requiredDocs,
-      attachments: 0,
-      notes: `Drafted on ${new Date().toLocaleDateString()}`
-    };
-  };
-
-  const handleAddToPolicyTracker = (msg: any, index: number) => {
-    const policyInfo = extractPolicyInfo(msg.question, msg.answer);
-
-    // Add source chat information
-    const policyWithSource = {
-      ...policyInfo,
-      sourceChatId: activeChatId || undefined, // Convert null to undefined
-      sourceMessageIndex: index
-    };
-
-    addPolicy(policyWithSource);
-
-    setAddedToPolicyTracker(index);
-    setShowPolicySnackbar(true);
-
-    setTimeout(() => setAddedToPolicyTracker(null), 3000);
-    setTimeout(() => setShowPolicySnackbar(false), 3000);
-  };
-
   const iconMap: Record<string, JSX.Element> = {
     "magnifying-glass-chart": <FolderSearch className="w-8 h-8 inline mr-2" />,
     "pencil-paper": <PencilLine className="w-8 h-8 inline mr-2" />,
@@ -204,43 +64,43 @@ export default function Home() {
   const promptSuggestions = [
     {
       id: 1,
-      icon: "magnifying-glass-chart", // icon for research
-      text: "**Research** every U.S. city that bans wild-animal circuses and why each law passed or failed"
+      icon: "magnifying-glass-chart",
+      text: "placeholder text"
     },
     {
       id: 2,
-      icon: "pencil-paper", // icon for drafting
-      text: "Draft a ready-to-file tethering ordinance for dogs in Austin, TX—with fiscal-impact statement"
+      icon: "pencil-paper",
+      text: "placeholder text"
     },
     {
       id: 3,
-      icon: "document-review", // icon for reviewing documents
-      text: "Review this Chicago carriage-horse ban draft and flag any potential conflicts with Illinois state law"
+      icon: "document-review",
+      text: "placeholder text"
     },
     {
       id: 4,
-      icon: "roadmap", // icon for roadmap/flowchart
-      text: "Create a roadmap that includes a complete legislative timeline to pass a plastic-straw ban in Miami Beach"
+      icon: "roadmap",
+      text: "placeholder text"
     },
     {
       id: 5,
-      icon: "gavel-search", // icon for legal precedent
-      text: "Find precedent that helped NYC pass its fur-products disclosure rule"
+      icon: "gavel-search",
+      text: "placeholder text"
     },
     {
       id: 6,
-      icon: "group-mobilize", // icon for mobilizing people
-      text: "Mobilize volunteers by creating a task list to lobby Phoenix council members on a rodeo cruelty ban"
+      icon: "group-mobilize",
+      text: "placeholder text"
     },
     {
       id: 7,
-      icon: "calendar-clock", // icon for tracking deadlines
-      text: "Track all initiative-petition deadlines for the Denver backyard-hen permit proposal"
+      icon: "calendar-clock",
+      text: "placeholder text"
     },
     {
       id: 8,
-      icon: "bar-chart-forecast", // icon for estimating costs
-      text: "Estimate enforcement costs for a Seattle program licensing outdoor cat enclosures"
+      icon: "bar-chart-forecast",
+      text: "placeholder text"
     }
   ];
 
@@ -345,7 +205,7 @@ export default function Home() {
       {chatHistory.length === 0 && (
         <div className="w-full flex justify-center items-center flex-shrink-0">
           <h1 className="text-[40px] text-pawlicy-green p-4 flex justify-center items-center w-full text-center pt-22 pb-8">
-            How can I help move your policy idea forward?
+            Perch
           </h1>
         </div>
       )}
@@ -361,7 +221,7 @@ export default function Home() {
                   className="w-full min-w-0 px-4 py-4 pb-26 pr-12 text-md border border-[#D7E8CD] shadow-md rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Be specific when sharing your policy goals with me so I can assist you to the best of my knowledge and ability."
+                  placeholder="Ask Perch anything about animal welfare advocacy, ordinances, legislation, and more."
                 />
                 <button
                   type="submit"
@@ -401,7 +261,7 @@ export default function Home() {
                         <div>
                           <ReactMarkdown>{msg.answer}</ReactMarkdown>
                           <div className="mt-4 pt-4 border-t text-sm text-gray-800 italic">
-                            Prepared by Pawlicy Pal. Please consult City Counsel before filing to confirm compliance with state pre‑emption rules and charter procedures.
+                            Prepared by Perch. Please consult City Counsel before filing to confirm compliance with state pre‑emption rules and charter procedures.
                           </div>
                         </div>
                       )}
@@ -435,21 +295,9 @@ export default function Home() {
                         sources
                       </button>
 
-                      {/* ADD to policy tracker button */}
-                      <button
-                        className="flex items-center gap-2 bg-pawlicy-green hover:bg-pawlicy-green text-white px-3 py-2 rounded-lg transition-colors shadow ml-auto cursor-pointer"
-                        onClick={() => handleAddToPolicyTracker(msg, idx)}
-                        title="Track this policy"
-                      >
-                        <Image
-                          src="/add-policy-tracker.svg"
-                          alt="Track this policy"
-                          width={20}
-                          height={20}
-                          className="invert brightness-0"
-                        />
-                        <span className="font-semibold text-sm">Track this policy</span>
-                      </button>
+                      <div className="ml-auto text-xs text-gray-400 italic">
+                        Generated by Perch — verify before using in policy or legal contexts.
+                      </div>
                     </div>
                   )}
 
@@ -535,7 +383,7 @@ export default function Home() {
               </div>
             </form>
             <div className="text-sm text-center text-gray-500 font-medium pt-4">
-              Pawlicy Pal can make mistakes. Check important information.
+              Perch can make mistakes. Check important information.
             </div>
           </div>
         </div>
@@ -551,21 +399,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Snackbar for policy tracker notification */}
-      {showPolicySnackbar && (
-        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transition-all duration-300 ease-in-out">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/add-policy-tracker.svg"
-              alt="Policy added"
-              width={16}
-              height={16}
-              className="filter invert"
-            />
-            <span className="text-sm font-medium">Added to Policy Tracker!</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

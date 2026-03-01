@@ -73,13 +73,13 @@ export default function Header() {
                 {/* Logo and Title */}
                 <Link href="/" onClick={handleLogoClick} className="flex items-center gap-3 cursor-pointer">
                     <Image
-                        src="/logo2.png" // Make sure this file exists in /public
-                        alt="Pawlicy Pal logo"
+                        src="/logo2.png"
+                        alt="Perch logo"
                         width={48}
                         height={48}
                     />
-                    <span className="text-lg">
-                        <b>Pawlicy</b> Pal
+                    <span className="text-lg font-bold">
+                        Perch
                     </span>
                 </Link>
 

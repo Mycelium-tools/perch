@@ -35,17 +35,6 @@ export default function Sidebar({
     router.push('/'); // Navigate to home page
   };
 
-  const handlePolicyTracker = () => {
-    router.push('/policy-tracker');
-    // Add a small delay to ensure navigation completes before scrolling
-    setTimeout(() => {
-      const mainElement = document.querySelector('main');
-      if (mainElement) {
-        mainElement.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 100);
-  };
-
   const handleDeleteChat = (e: React.MouseEvent, chatId: string) => {
     e.stopPropagation(); // Prevent triggering onSelectChat
     if (window.confirm('Are you sure you want to delete this chat?')) {
@@ -71,31 +60,17 @@ export default function Sidebar({
           onClick={handleNewPolicy}
           className="flex items-center gap-2 text-gray-700 font-medium rounded-2xl px-3 py-2 transition hover:bg-pawlicy-lightgreen focus:bg-pawlicy-green focus:text-white focus:outline-none cursor-pointer"
         >
-          <SquarePen className="w-5 h-5" /> New draft
-        </button>
-
-        <button
-          onClick={handlePolicyTracker}
-          className="group flex items-center gap-2 text-gray-700 font-medium rounded-2xl px-3 py-2 transition hover:bg-pawlicy-lightgreen focus:bg-pawlicy-green focus:text-white focus:outline-none cursor-pointer"
-        >
-          <Image
-            src="/add-policy-tracker.svg"
-            alt="Track this policy"
-            width={24}
-            height={24}
-            className="brightness-0 group-focus:invert"
-          />
-          Policy tracker
+          <SquarePen className="w-5 h-5" /> New chat
         </button>
       </nav>
 
-      {/* Drafts Section */}
+      {/* Chats Section */}
       <div className="mt-8">
-        <div className="text-sm font-bold text-gray-500 mb-2 pl-2">Drafts</div>
+        <div className="text-sm font-bold text-gray-500 mb-2 pl-2">Chats</div>
         <div className="flex flex-col gap-1">
           {chats.length === 0 ? (
             <div className="px-2 py-2 text-sm text-gray-500 text-left">
-              Your policy drafts will appear here.
+              Your chats will appear here.
             </div>
           ) : (
             chats.map((chat: Chat) => (
