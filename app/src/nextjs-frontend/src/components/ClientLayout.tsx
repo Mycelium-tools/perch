@@ -4,6 +4,7 @@ import React, { useState, useContext, createContext } from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useRouter } from "next/navigation";
+// test
 
 // Define types and context
 type Chat = { id: string; title: string; history: { question: string; answer: string; context?: any; pending?: boolean }[] };
