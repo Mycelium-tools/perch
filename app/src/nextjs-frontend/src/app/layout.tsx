@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pawlicy Pal",
+  title: "Perch",
   description: "Your AI for animal-friendly cities",
   icons: {
     icon: '/favicon.ico',
