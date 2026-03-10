@@ -58,7 +58,7 @@ export default function OnboardingRolePage() {
             <div className="bg-white rounded-4xl shadow-2xl max-w-3xl w-full p-8 relative z-10 flex flex-col items-center">
                 <h2 className="text-2xl text-pawlicy-green mb-2 text-center">Which role best describes your work?</h2>
                 <div className="text-gray-600 text-sm mb-4 text-center">
-                    This allows Pawlicy Pal to tailor the language depth, legal detail, and task guidance you see. You can always adjust this later in your account settings.
+                    This allows Perch to tailor the language depth, legal detail, and task guidance you see. You can always adjust this later in your account settings.
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 max-w-xs w-full mx-auto">
                     <div className="space-y-3">
