@@ -66,7 +66,7 @@ export default function OnboardingRegionPage() {
             {/* Modal */}
             <div className="bg-white rounded-4xl shadow-2xl max-w-3xl w-full p-8 relative z-10 flex flex-col items-center">
                 <h2 className="text-xl text-pawlicy-green mb-2 text-center">Which city or country are you working in?</h2>
-                <div className="text-gray-600 text-sm mb-4 text-center">This helps Pawlicy Pal tailor ordinance templates, legal checks, and timeline alerts to your local laws.</div>
+                <div className="text-gray-600 text-sm mb-4 text-center">This helps Perch tailor ordinance templates, legal checks, and timeline alerts to your local laws.</div>
                 <form onSubmit={handleSubmit} className="space-y-4 max-w-xs w-full mx-auto">
                     <div className="relative">
                         <input

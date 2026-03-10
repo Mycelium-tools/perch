@@ -1,10 +1,8 @@
-# PAWLICY PAL
+# Perch
 
-Live site: https://www.pawlicypal.ai/
+Perch
 
-Pawlicy Pal 🐾
-
-Pawlicy Pal is a conversational AI tool that helps policymakers, advocates, and urban designers draft localized, animal-centered micro-policies to create more inclusive cities. This could include ordinaces around bird-safe building codes, non-lethal rodent control, sanctuary zoning updates, or legsilation that bans cruel practices. The app also includes a Policy tracker - a workflow manager that helps teams organize their drafted policies and see them from start to finish.
+Description coming soon!
 
 Features
 

@@ -162,7 +162,7 @@ export default function CreateAccountPage() {
               <div className="flex items-center justify-center gap-2">
                 <Image
                   src="/logo2.png"
-                  alt="Pawlicy Pal logo"
+                  alt="Perch logo"
                   width={40}
                   height={40}
                 />

@@ -50,7 +50,7 @@ export default function OnboardingCollaboratePage() {
             <div className="bg-white rounded-4xl shadow-2xl max-w-3xl w-full p-8 relative z-10 flex flex-col items-center">
                 <h2 className="text-2xl text-pawlicy-green mb-2 text-center">Do you plan to collaborate with others?</h2>
                 <div className="text-gray-600 text-sm mb-4 text-center">
-                    Select one option to set up sharing and task features on Pawlicy Pal. You can update these settings later.
+                    Select one option to set up sharing and task features on Perch. You can update these settings later.
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 max-w-xs w-full mx-auto">
                     <div className="space-y-3">
