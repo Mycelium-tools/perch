@@ -5,3 +5,6 @@ pinecone
 langchain_pinecone
 langchain
 langchain-google-genai
+langchain-classic
+langchain-core
+langchain-openai
