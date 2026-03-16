@@ -89,10 +89,10 @@ retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
 retriever = docsearch.as_retriever()
 
 # OpenAI LLM setup
-# Use gpt-5-nano as the cheapest and least resource intensive model
+# Use gpt-5-mini as the base model
 # temperature=0.0 makes responses deterministic (no sampling randomness).
 llm = ChatOpenAI(
-    model_name="gpt-5-nano", 
+    model_name="gpt-5-mini", 
     temperature=0.0 
     )
 
