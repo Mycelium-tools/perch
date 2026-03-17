@@ -4,7 +4,7 @@ load_dotenv()
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.document_loaders import WebBaseLoader  # For scraping webpages
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec

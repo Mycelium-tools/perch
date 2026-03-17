@@ -17,14 +17,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 import os
 
-# Path to the PDF to ingest — used when running this script directly
-pdfTest = "rag_sources/fur_sale_ban_2019.pdf"
+# Input data for ingestion — used when running this script directly
+pdfTest = "rag_sources/An Experimental Investigation of the Impact of Video Media on Pork Consumption.pdf"
+topic = "pork"
+source = "Faunlytics"
+year = "2017"
+# Namespace acts as a logical partition within the index — different document
+# collections can live in the same index under separate namespaces.
+namespace = "animal_policies"
+
 
 # Embedding model — multilingual-e5-large produces 1024-dimensional vectors
 model_name = 'multilingual-e5-large'
@@ -38,11 +45,8 @@ cloud = os.environ.get('PINECONE_CLOUD') or 'aws'
 region = os.environ.get('PINECONE_REGION') or 'us-east-1'
 spec = ServerlessSpec(cloud=cloud, region=region)
 
-# Target Pinecone index and namespace.
-# Namespace acts as a logical partition within the index — different document
-# collections can live in the same index under separate namespaces.
+# Target Pinecone index
 index_name = "perch"
-namespace = "animal_policies"
 
 def ingest_document(file_path, index_name, namespace):
     # Note: `index_name` and `namespace` here are local parameters that shadow
@@ -53,7 +57,8 @@ def ingest_document(file_path, index_name, namespace):
     # Note: the original comment said "PDF or markdown" but this loader only
     # handles PDFs — use a different loader (e.g. UnstructuredMarkdownLoader)
     # for markdown files.
-    print(f"Loading file: {file_path}")
+    file_id = hash(file_path)
+    print(f"Loading file: {file_path} with ID: {file_id}")
     loader = PyPDFLoader(file_path)
     docs = loader.load()
     print(f"Loaded {len(docs)} pages from PDF.")
@@ -73,13 +78,18 @@ def ingest_document(file_path, index_name, namespace):
     # after retrieval. These fields are hardcoded for the fur ban document —
     # update them for different documents.
     metadata_fields = {
-        "topic": "fur_ban",
-        "year": 2019,
-        "jurisdiction": "NYC",
+        "topic": f"{topic}",
+        "year": year,
+        "source": f"{source}",
+        "chunkCount": len(chunks)
     }
 
-    for chunk in chunks:
+    for (chunk_count, chunk) in enumerate(chunks):        
+        # Add chunk metadata
         chunk.metadata.update(metadata_fields)
+        
+        # Set chunk ID for Pinecone upsert
+        chunk.id = f"{file_id}-{chunk_count}"
 
     # 3. Initialize embedding model
     # PineconeEmbeddings wraps the hosted Pinecone inference API.

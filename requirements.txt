@@ -8,3 +8,5 @@ langchain-google-genai
 langchain-classic
 langchain-core
 langchain-openai
+langchain-text-splitters
+pypdf
