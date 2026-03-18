@@ -290,7 +290,7 @@ export default function Home() {
                       {/* SOURCES */}
                       <button
                         className="text-[#66991D] hover:text-green-900 cursor-pointer transition-colors p-1 rounded"
-                        title="Edit"
+                        title="Sources"
                       >
                         sources
                       </button>

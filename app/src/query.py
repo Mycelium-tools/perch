@@ -21,11 +21,11 @@ import time  # only used in commented-out debug code below
 
 from pinecone import Pinecone
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
-from langchain.chains import create_retrieval_chain
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain import hub
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
+from langchain_classic.chains.retrieval import create_retrieval_chain
+from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic import hub
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts.prompt import PromptTemplate
 
 # Custom prompt passed to the LLM.
 # input_variables must match the keys the chain injects:
@@ -88,14 +88,14 @@ retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
 # docsearch is already defined above — the comment below is outdated.
 retriever = docsearch.as_retriever()
 
-# Gemini LLM setup.
-# gemini-2.5-flash is Google's Gemini 2.5 Flash model.
+# OpenAI LLM setup
+# Use gpt-5-mini as the base model
 # temperature=0.0 makes responses deterministic (no sampling randomness).
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=os.environ.get("GEMINI_API_KEY"),
-    temperature=0.0
-)
+llm = ChatOpenAI(
+    model_name="gpt-5-mini", 
+    temperature=0.0 
+    )
+
 
 # create_stuff_documents_chain: combines retrieved Document chunks into a single
 # context string, then calls the LLM with custom_prompt.
