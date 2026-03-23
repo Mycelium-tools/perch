@@ -1,14 +1,13 @@
-# batchIngest.py
+# ingest.py
 #
-# Batch document ingestion script for Perch's RAG pipeline.
+# Document ingestion script for Perch's RAG pipeline.
 #
 # Reads document metadata from data_sources.json and ingests all PDFs into
 # Pinecone with rich metadata (organization, doc_type, tags, sections, etc.).
 #
-# For ingesting a single document, see ingest.py.
 #
 # Usage:
-#   python batchIngest.py
+#   python ingest.py
 
 import os
 import json
@@ -18,10 +17,7 @@ from datetime import datetime
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
-
-# Import utility functions and main ingest function from ingest_utils
-from ingest_utils import *
-
+from chunking_utils import *
 from langchain_community.document_loaders import PyPDFLoader
 
 # Load environment variables
@@ -91,7 +87,7 @@ def ingest_pdf(entry):
         print(f"⚠️  File not found or path missing: {full_path}")
         return
     
-    display_name = meta.get('name') or full_path.stem
+    display_name = meta.get('name') or full_path.stem # Remove file suffix if using file name
     print(f"\n{'─'*70}")
     print(f"Processing: {display_name}")
     print(f"{'─'*70}")
@@ -115,7 +111,7 @@ def ingest_pdf(entry):
         # STEP 3: Extract section headers
         # ─────────────────────────────────────────────────────────────────
         print(f"🔍 Extracting section headers...")
-        headings = extract_section_titles_by_font_size(file_path)
+        headings = extract_section_titles_by_font_size(full_path)
         print(f"✅ Found {len(headings)} sections")
 
         # ─────────────────────────────────────────────────────────────────
@@ -208,6 +204,43 @@ def run_ingestion_from_json(json_file_path):
     print(f"✅ Batch ingestion complete! Processed {pdf_count} PDFs")
     print(f"{'='*70}")
 
+# ============================================================================
+# UTILITY FUNCTIONS - File Path, File Hash
+# ============================================================================
+
+def get_full_path(relative_path):
+    """
+    Convert relative path to absolute path.
+    
+    Assumes paths are relative to this script's directory.
+    Allows data_sources.json entries like "sources/file.pdf" to work
+    regardless of where the script is run from.
+    
+    Args:
+        relative_path: e.g., "sources/legislation.pdf"
+    
+    Returns:
+        Absolute Path object
+    """
+    base_dir = Path(__file__).resolve().parent
+    return (base_dir / relative_path).resolve()
+
+def get_source_hash(input_string):
+    """
+    Generate unique MD5 hash for a source file path.
+    
+    Purpose: Deduplication at document level.
+    - Same file path always produces same hash
+    - Hash + chunk_index = globally unique chunk ID
+    - Enables re-ingestion without duplicates (Pinecone upserts overwrite)
+    
+    Args:
+        input_string: File path (e.g., "sources/legislation.pdf")
+    
+    Returns:
+        32-char hex string (e.g., "abc123def456...")
+    """
+    return hashlib.md5(input_string.encode()).hexdigest()
 
 # ============================================================================
 # MAIN ENTRY POINT

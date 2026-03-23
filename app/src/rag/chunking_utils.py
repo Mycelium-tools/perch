@@ -1,16 +1,14 @@
-# ingest_utils.py
+# chunking_utils.py
 #
-# Utilities for PDF ingestion pipeline (ingest.py).
-# Provides: text splitting, metadata building, section extraction, hashing.
+# Utilities for chunking documents to be ingested into Pinecone.
+# Provides: text splitting, metadata building, section extraction
 #
 # PDF SECTION EXTRACTION STRATEGY (3-method combined approach):
 # ────────────────────────────────────────────────────────────────────────
 # 1. Font size detection: Identifies large text (visual hierarchy)
-#    Example: "Subchapter 3: Rental Horse Licensing and Protection Law"
 #
-# 2. Bold detection: Captures lines where ENTIRE text is bold
-#    Example: "§ 17-330 Regulations." (when all characters are bold)
-#    Skips: "ASPCA." (only one word, mixed formatting)
+# 2. Bold detection: Captures lines where ENTIRE text is bold. 
+#    Skips lines with mixed formatting
 #
 # 3. Pattern matching: Matches known heading patterns
 #    Examples: § symbols, "Chapter", "Article", ALL-CAPS text
@@ -41,42 +39,8 @@ splitter = RecursiveCharacterTextSplitter(
 )
 
 # ============================================================================
-# UTILITY FUNCTIONS - Path, Hash, Metadata
+# UTILITY FUNCTIONS - Build Chunk Metadata
 # ============================================================================
-
-def get_full_path(relative_path):
-    """
-    Convert relative path to absolute path.
-    
-    Assumes paths are relative to this script's directory.
-    Allows data_sources.json entries like "sources/file.pdf" to work
-    regardless of where the script is run from.
-    
-    Args:
-        relative_path: e.g., "sources/legislation.pdf"
-    
-    Returns:
-        Absolute Path object
-    """
-    base_dir = Path(__file__).resolve().parent
-    return (base_dir / relative_path).resolve()
-
-def get_source_hash(input_string):
-    """
-    Generate unique MD5 hash for a source file path.
-    
-    Purpose: Deduplication at document level.
-    - Same file path always produces same hash
-    - Hash + chunk_index = globally unique chunk ID
-    - Enables re-ingestion without duplicates (Pinecone upserts overwrite)
-    
-    Args:
-        input_string: File path (e.g., "sources/legislation.pdf")
-    
-    Returns:
-        32-char hex string (e.g., "abc123def456...")
-    """
-    return hashlib.md5(input_string.encode()).hexdigest()
 
 def build_chunk_metadata(file_path, source_hash, chunk_index, chunk, meta, ingestion_date):
     """
@@ -127,10 +91,10 @@ def build_chunk_metadata(file_path, source_hash, chunk_index, chunk, meta, inges
     }
 
 # ============================================================================
-# PDF SECTION EXTRACTION - THREE METHODS COMBINED
+# PDF SECTION EXTRACTION 
 # ============================================================================
 
-def extract_section_titles_by_font_size(file_path):
+def extract_section_titles_by_font_size(abs_file_path):
     """
     Extract section titles using ALL THREE methods combined:
     
@@ -141,8 +105,7 @@ def extract_section_titles_by_font_size(file_path):
     All three methods run independently, results deduplicated by text.
     """
     
-    if not Path(file_path).is_absolute():
-        file_path = str(get_full_path(file_path))
+    file_path = abs_file_path
     
     all_headings = []
     seen_headings = set()  # Deduplication set
