@@ -1,46 +1,46 @@
-# ingest.py
+# batchIngest.py
 #
-# One-off document ingestion script for Perch's RAG pipeline.
+# Batch document ingestion script for Perch's RAG pipeline.
 #
-# Loads a single PDF, splits it into overlapping chunks, embeds each chunk
-# using multilingual-e5-large, and upserts the vectors into a Pinecone index.
-# Run this script directly to populate the vector store before the API can
-# retrieve relevant context.
+# Reads document metadata from data_sources.json and ingests all PDFs into
+# Pinecone with rich metadata (organization, doc_type, tags, sections, etc.).
 #
-# For ingesting multiple documents at once, see batchIngest.py.
+# For ingesting a single document, see ingest.py.
 #
 # Usage:
-#   python ingest.py
-# (ingests `pdfTest` into `index_name` / `namespace` defined at module level)
+#   python batchIngest.py
 
+import os
+import json
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()
-
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from datetime import datetime
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
-import os
 
-# Input data for ingestion — used when running this script directly
-pdfTest = "rag_sources/An Experimental Investigation of the Impact of Video Media on Pork Consumption.pdf"
-topic = "pork"
-source = "Faunlytics"
-year = "2017"
-# Namespace acts as a logical partition within the index — different document
-# collections can live in the same index under separate namespaces.
-namespace = "animal_policies"
+# Import utility functions and main ingest function from ingest_utils
+from ingest_utils import *
 
+from langchain_community.document_loaders import PyPDFLoader
 
-# Embedding model — multilingual-e5-large produces 1024-dimensional vectors
+# Load environment variables
+load_dotenv()
+
+# ============================================================================
+# PINECONE CONFIGURATION
+# ============================================================================
+
+# Default namespace to ingest to
+DEFAULT_NAMESPACE = 'animal_policies'
+
+# Embedding model
 model_name = 'multilingual-e5-large'
 
 # Initialize Pinecone client
 pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
 
-# Serverless spec — cloud/region determine where the index is hosted.
-# Defaults to AWS us-east-1 if env vars are not set.
+# Serverless spec
 cloud = os.environ.get('PINECONE_CLOUD') or 'aws'
 region = os.environ.get('PINECONE_REGION') or 'us-east-1'
 spec = ServerlessSpec(cloud=cloud, region=region)
@@ -48,86 +48,178 @@ spec = ServerlessSpec(cloud=cloud, region=region)
 # Target Pinecone index
 index_name = "perch"
 
-def ingest_document(file_path, index_name, namespace):
-    # Note: `index_name` and `namespace` here are local parameters that shadow
-    # the module-level variables of the same name.
+# Initialize embeddings
+embeddings = PineconeEmbeddings(
+    model=model_name,
+    pinecone_api_key=os.environ.get('PINECONE_API_KEY')
+)
 
-    # 1. Load PDF
-    # PyPDFLoader loads one Document per page.
-    # Note: the original comment said "PDF or markdown" but this loader only
-    # handles PDFs — use a different loader (e.g. UnstructuredMarkdownLoader)
-    # for markdown files.
-    file_id = hash(file_path)
-    print(f"Loading file: {file_path} with ID: {file_id}")
-    loader = PyPDFLoader(file_path)
-    docs = loader.load()
-    print(f"Loaded {len(docs)} pages from PDF.")
-
-    # 2. Split into overlapping chunks
-    # chunk_size=500 (characters) keeps chunks small enough for the embedding
-    # model's context window. chunk_overlap=50 ensures context isn't lost at
-    # chunk boundaries.
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+# Ensure index exists in Pinecone
+if index_name not in pc.list_indexes().names():
+    print(f"Creating index: {index_name}")
+    pc.create_index(
+        name=index_name,
+        dimension=1024,  # Dimension for multilingual-e5-large
+        metric="cosine",
+        spec=spec
     )
-    chunks = splitter.split_documents(docs)
-    print(f"Split into {len(chunks)} chunks for embedding.")
+    print(f"✅ Index created: {index_name}")
+else:
+    print(f"✅ Using existing index: {index_name}")
 
-    # Attach metadata to every chunk so vectors can be filtered or identified
-    # after retrieval. These fields are hardcoded for the fur ban document —
-    # update them for different documents.
-    metadata_fields = {
-        "topic": f"{topic}",
-        "year": year,
-        "source": f"{source}",
-        "chunkCount": len(chunks)
-    }
+# ============================================================================
+# BATCH INGESTION FUNCTIONS
+# ============================================================================
 
-    for (chunk_count, chunk) in enumerate(chunks):        
-        # Add chunk metadata
-        chunk.metadata.update(metadata_fields)
+def ingest_pdf(entry):
+    """
+    Ingest a single PDF from a data_sources.json entry
+    
+    Args:
+        entry: Dict from data_sources.json with keys:
+               - source: relative path to PDF
+               - namespace: Pinecone namespace (default: "animal_policies")
+               - meta: metadata dict (name, url, organization, doc_type, tags, pub_date)
+    """
+    file_path = entry.get('source')
+    full_path = get_full_path(file_path).resolve()
+    namespace = entry.get('namespace', DEFAULT_NAMESPACE)
+    meta = entry.get('meta', {})
+    
+    # Validate file exists
+    if not file_path or not full_path.exists():
+        print(f"⚠️  File not found or path missing: {full_path}")
+        return
+    
+    display_name = meta.get('name') or full_path.stem
+    print(f"\n{'─'*70}")
+    print(f"Processing: {display_name}")
+    print(f"{'─'*70}")
+    
+    try:
+        # ─────────────────────────────────────────────────────────────────
+        # STEP 1: Load PDF
+        # ─────────────────────────────────────────────────────────────────
+        print(f"📖 Loading PDF...")
+        loader = PyPDFLoader(str(full_path))
+        docs = loader.load()
+        print(f"✅ Loaded {len(docs)} pages")
+
+        # ─────────────────────────────────────────────────────────────────
+        # STEP 2: Generate identifiers and timestamps
+        # ─────────────────────────────────────────────────────────────────
+        source_hash = get_source_hash(file_path)
+        ingestion_date = datetime.now().strftime("%Y-%m-%d")
+
+        # ─────────────────────────────────────────────────────────────────
+        # STEP 3: Extract section headers
+        # ─────────────────────────────────────────────────────────────────
+        print(f"🔍 Extracting section headers...")
+        headings = extract_section_titles_by_font_size(file_path)
+        print(f"✅ Found {len(headings)} sections")
+
+        # ─────────────────────────────────────────────────────────────────
+        # STEP 4: Split into chunks
+        # ─────────────────────────────────────────────────────────────────
+        print(f"✂️  Splitting into chunks...")
+        chunks = splitter.split_documents(docs)
+        print(f"✅ Created {len(chunks)} chunks")
         
-        # Set chunk ID for Pinecone upsert
-        chunk.id = f"{file_id}-{chunk_count}"
+        # ─────────────────────────────────────────────────────────────────
+        # STEP 5: Add metadata to each chunk
+        # ─────────────────────────────────────────────────────────────────
+        print(f"🏷️  Adding metadata...")
+        for i, chunk in enumerate(chunks):
+            # Determine section for this chunk
+            current_page = chunk.metadata.get('page', 0)
+            section = next(
+                (h['text'] for h in reversed(headings) if h['page'] <= current_page),
+                "General"
+            )
+            
+            # Build metadata
+            metadata = build_chunk_metadata(
+                file_path=file_path,
+                source_hash=source_hash,
+                chunk_index=i,
+                chunk=chunk,
+                meta=meta,
+                ingestion_date=ingestion_date
+            )
+            metadata["section"] = section
+            
+            # Attach metadata to chunk
+            chunk.metadata.update(metadata)
+            chunk.id = metadata["chunk_id"]
 
-    # 3. Initialize embedding model
-    # PineconeEmbeddings wraps the hosted Pinecone inference API.
-    embeddings = PineconeEmbeddings(
-        model=model_name,
-        pinecone_api_key=os.environ.get('PINECONE_API_KEY')
-    )
-
-    # 4. Create Pinecone index if it doesn't already exist
-    # `embeddings.dimension` returns the output dimension of the model (1024 for
-    # multilingual-e5-large). cosine metric is standard for semantic similarity.
-    if index_name not in pc.list_indexes().names():
-        pc.create_index(
-            name=index_name,
-            dimension=embeddings.dimension,
-            metric="cosine",
-            spec=spec
+        # ─────────────────────────────────────────────────────────────────
+        # STEP 6: Embed and upsert to Pinecone
+        # ─────────────────────────────────────────────────────────────────
+        print(f"🚀 Embedding and upserting...")
+        PineconeVectorStore.from_documents(
+            chunks,
+            index_name=index_name,
+            embedding=embeddings,
+            namespace=namespace
         )
-        print(f"Created new index: {index_name}")
-    else:
-        print(f"Using existing index: {index_name}")
+        print(f"✅ Successfully ingested {len(chunks)} chunks into '{namespace}'")
+        
+        # Print stats
+        index = pc.Index(index_name)
+        stats = index.describe_index_stats()
+        ns_stats = stats.get('namespaces', {}).get(namespace, {})
+        vector_count = ns_stats.get('vector_count', 0)
+        print(f"📊 Namespace '{namespace}' now has {vector_count} vectors")
+        
+    except Exception as e:
+        print(f"❌ Error processing {full_path}: {e}")
+        import traceback
+        traceback.print_exc()
 
-    # 5. Embed chunks and upsert to Pinecone
-    # PineconeVectorStore.from_documents embeds each chunk and upserts the
-    # resulting vectors in a single call. If the namespace does not exist,
-    # Pinecone creates it automatically.
-    PineconeVectorStore.from_documents(
-        chunks,
-        index_name=index_name,
-        embedding=embeddings,
-        namespace=namespace
-    )
 
-    print(f"Upserted {len(chunks)} chunks into index '{index_name}' under namespace '{namespace}'.")
+def run_ingestion_from_json(json_file_path):
+    """
+    Read data_sources.json and ingest all PDF entries.
+    
+    Args:
+        json_file_path: Path to data_sources.json
+    """
+    if not os.path.exists(json_file_path):
+        print(f"❌ JSON file not found at: {json_file_path}")
+        return
 
-    # Print index stats to confirm the upsert was successful
-    stats = pc.Index(index_name).describe_index_stats()
-    print(f"Index stats after upsert: {stats}")
+    with open(json_file_path, 'r', encoding='utf-8') as f:
+        try:
+            data_sources = json.load(f)
+        except json.JSONDecodeError as e:
+            print(f"❌ Failed to parse JSON: {e}")
+            return
+
+    # Process only PDF entries
+    pdf_count = 0
+    for entry in data_sources:
+        if entry.get('type') == 'pdf':
+            ingest_pdf(entry)
+            pdf_count += 1
+        else:
+            print(f"🚫 Skipping non-PDF entry: {entry.get('source', 'Unknown')}")
+    
+    print(f"\n{'='*70}")
+    print(f"✅ Batch ingestion complete! Processed {pdf_count} PDFs")
+    print(f"{'='*70}")
+
+
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
 
 if __name__ == "__main__":
-    ingest_document(pdfTest, index_name, namespace)
+    current_file = Path(__file__).resolve()
+    rag_dir = current_file.parent
+    JSON_INPUT_FILE = rag_dir / "data_sources.json"
+    
+    print(f"{'='*70}")
+    print(f"🚀 Starting Resource Ingestion to Pinecone from {JSON_INPUT_FILE}")
+    print(f"{'='*70}")
+    
+    run_ingestion_from_json(JSON_INPUT_FILE)
