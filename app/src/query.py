@@ -24,35 +24,35 @@ from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from langchain_classic.chains.retrieval import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_classic import hub
+from langchain_classic.chains.query_constructor.base import AttributeInfo
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts.prompt import PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+
+system_prompt = (
+    "CONTEXT FROM DOCUMENTS:\n{context}\n\n"
+    "You are an expert advisor for animal advocacy organizations. Your role is to provide "
+    "actionable, evidence-based guidance on animal welfare policy, legislation, and advocacy strategy. "
+    "Ground your responses in research, case studies, and real-world examples found in the context.\n"
+    "\n\n"
+    "INSTRUCTIONS:\n"
+    "1. **Structure**: Use ## Headers to organize sections. Use * for bullet points and ** for bold emphasis on key terms.\n"
+    "2. **Formatting**: Each section header should be on its own line followed by a blank line. Bullet points should be concise (one idea per bullet).\n"
+    "3. **Specificity**: Avoid generic advice. Reference concrete examples, jurisdictions, or policy mechanisms when possible. If you don't have specific information, say so.\n"
+    "4. **Sources**: Never mention 'the documents' or 'the context provided.' If no relevant sources exist for your answer, acknowledge the gap and provide general knowledge if helpful.\n"
+    "5. **Tone**: Professional and grounded. Assume the user has domain expertise in animal advocacy.\n"
+)
 
 # Custom prompt passed to the LLM.
+# 1. Use ChatPromptTemplate for better GPT-5 instruction following.
+# 2. Use .strip() or left-aligned text to avoid passing "tab" spaces to the LLM.
+
 # input_variables must match the keys the chain injects:
 #   - {context}: the retrieved document chunks, formatted as a single string by create_stuff_documents_chain
 #   - {input}: the user's question, passed directly from retrieval_chain.invoke({"input": ...})
-custom_prompt = PromptTemplate(
-    input_variables=["context", "input"],
-    template="""
-        You are an expert assistant.
-
-        First, provide a detailed answer to the question based on your general knowledge.
-
-        Then if applicable, supplement your answer with the following relevant facts from these documents:
-        {context}
-
-        However, if the query is clearly not related to or present in the documents, answer solely based on your own knowledge.
-
-        Regardless, in your response to the user, do not mention that you are using these documents. Instead, seamlessly integrate the information into your answer. If possible, format your response in a way that is easy to read, such as using headers, bullet points or numbered lists.
-
-        If there is any conflict between your knowledge and the documents, prioritize the documents.
-
-        Question:
-        {input}
-
-        Answer:
-        """
-    )
+custom_prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt.strip()),
+    ("human", "From an animal advocacy perspective, {input}"),
+])
 
 # Pinecone config — must match what was used at ingest time.
 # Changing `namespace` here switches which set of documents is retrieved.
@@ -77,16 +77,13 @@ docsearch = PineconeVectorStore(
     namespace=namespace
 )
 
-# index = pc.Index(index_name)  # Raw Pinecone index client — used in debug code below
-
 # Pulls the standard retrieval-QA prompt from LangChain Hub.
 # NOTE: this prompt is never actually used — custom_prompt is passed to the chain instead.
 # Safe to remove if custom_prompt is the intended prompt.
 retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
 
 # Wrap the vector store as a LangChain retriever.
-# docsearch is already defined above — the comment below is outdated.
-retriever = docsearch.as_retriever()
+# retriever = docsearch.as_retriever()
 
 # OpenAI LLM setup
 # Use gpt-5-mini as the base model
@@ -96,16 +93,24 @@ llm = ChatOpenAI(
     temperature=0.0 
     )
 
+# Format documents into a string containing source name and URL that the LLM can easily parse
+document_prompt = PromptTemplate(
+    input_variables=["page_content", "source_name", "source_url"],
+    template="--- SOURCE: {source_name} ---\nURL: {source_url}\nCONTENT: {page_content}\n"
+)
 
 # create_stuff_documents_chain: combines retrieved Document chunks into a single
 # context string, then calls the LLM with custom_prompt.
 combine_docs_chain = create_stuff_documents_chain(
-    llm, custom_prompt
+    llm, 
+    custom_prompt,
+    document_variable_name="context", 
+    document_prompt=document_prompt
 )
 
 # Optionally filter retrieved chunks by similarity score (0–1).
-# Score threshold of 0.7 means only chunks with cosine similarity >= 0.7 are returned.
-# retriever = docsearch.as_retriever(search_kwargs={"score_threshold": 0.7})
+# Score threshold of 0.8 means only chunks with cosine similarity >= 0.8 are returned.
+retriever = docsearch.as_retriever(search_kwargs={"score_threshold": 0.8})
 
 # create_retrieval_chain: wraps the retriever + combine_docs_chain into one pipeline.
 # Calling retrieval_chain.invoke({"input": question}) returns {"answer": ..., "context": ...}.

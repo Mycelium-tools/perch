@@ -59,6 +59,21 @@ async def ask_question(request: Request):
     # Returns {"answer": str, "context": list[Document]}.
     result = retrieval_chain.invoke({"input": user_input})
 
+    # DEBUG LOGGING: Loop through retrieved chunks and log to terminal
+    print(f"\n--- RETRIEVAL DEBUG FOR: '{user_input}' ---")
+    if not result["context"]:
+        print("❌ NO DOCUMENTS RETRIEVED")
+    else:
+        for i, doc in enumerate(result["context"]):
+            name = doc.metadata.get("source_name", "Unknown Name")
+            url = doc.metadata.get("source_url", "No URL")
+            # Print a snippet of the text to verify the content matches the metadata
+            snippet = doc.page_content[:50].replace('\n', ' ')
+            print(f"[{i+1}] NAME: {name}")
+            print(f"    URL:  {url}")
+            print(f"    TEXT: {snippet}...")
+    print("-------------------------------------------\n")
+
     return {
         "answer": result["answer"],
         "context": result["context"]  # list of LangChain Document objects (retrieved chunks)
