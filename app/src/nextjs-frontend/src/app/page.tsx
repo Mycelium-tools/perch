@@ -252,14 +252,30 @@ export default function Home() {
                   </div>
                   {/* AI answer bubble */}
                   <div className="mt-2 flex justify-start">
-                    <div className="px-4 prose prose-pawlicy max-w-3xl">
+                    <div className="px-4 prose max-w-3xl">
                       {msg.pending ? (
                         <span>
                           <BirdLoader /> Thinking...
                         </span>
                       ) : (
                         <div>
-                          <ReactMarkdown>{msg.answer}</ReactMarkdown>
+                          {(() => {
+                            console.log('Raw answer:', msg.answer);
+                            return (                              
+                              <ReactMarkdown components={{
+                              h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 text-gray-900" {...props} />,
+                              h2: ({node, ...props}) => <h2 className="text-2xl font-bold mt-6 mb-3 text-gray-800" {...props} />,
+                              p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-700" {...props} />,
+                              ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4 space-y-1" {...props} />,
+                              ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1" {...props} />,
+                              li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                              strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
+                              }}>
+                              {msg.answer}
+
+                              </ReactMarkdown>
+                            );
+                          })()}
                           <div className="mt-4 pt-4 border-t text-sm text-gray-800 italic">
                             Prepared by Perch. Please consult City Counsel before filing to confirm compliance with state pre‑emption rules and charter procedures.
                           </div>
@@ -291,8 +307,9 @@ export default function Home() {
                       <button
                         className="text-[#66991D] hover:text-green-900 cursor-pointer transition-colors p-1 rounded"
                         title="Sources"
+                        onClick={() => setShowContext(showContext === idx ? null : idx)}
                       >
-                        sources
+                        Sources
                       </button>
 
                       <div className="ml-auto text-xs text-gray-400 italic">
@@ -303,26 +320,29 @@ export default function Home() {
 
                   {showContext === idx && msg.context && (
                     <div>
-                      <strong className="block mb-1">Context:</strong>
-                      <div>
-                        {Array.isArray(msg.context)
-                          ? msg.context.map((item, cidx) => (
-                            <pre
-                              key={cidx}
-                              className="bg-gray-100 p-2 rounded mb-2 text-sm overflow-x-auto"
-                            >
-                              {JSON.stringify(item, null, 2)}
-                            </pre>
-                          ))
-                          : typeof msg.context === "object"
-                            ? (
-                              <pre className="bg-gray-100 p-2 rounded text-sm overflow-x-auto">
-                                {JSON.stringify(msg.context, null, 2)}
-                              </pre>
-                            )
-                            : msg.context}
+                        <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                        <FolderSearch className="w-4 h-4" />
+                        Retrieved Research & Policy Documents
+                        </h3>
+                        <ul className="space-y-4">
+                          {Array.from(
+                            new Map(
+                              msg.context.map((doc: any) => [
+                                doc.metadata?.source_name || "Untitled Document",
+                                doc
+                              ])
+                            ).values()
+                          ).map((doc: any, cidx: number) => (
+                            <li key={cidx} className="text-sm border-l-4 border-green-500 pl-4 py-1">
+                              <a href={doc.metadata?.source_url || ""} target="_blank">
+                                <div className="font-bold text-gray-900">
+                                  {doc.metadata?.source_name || "Untitled"} | {doc.metadata?.source_organization || ""}
+                                </div>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    </div>
                   )}
                 </div>
               ))}
