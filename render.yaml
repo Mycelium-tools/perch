@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: perch-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app_api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PINECONE_CLOUD
+        sync: false
+      - key: PINECONE_REGION
+        sync: false
