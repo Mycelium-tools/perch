@@ -49,6 +49,10 @@ def build_history_text(history):
         f"{'User' if m['role']=='user' else 'Assistant'}: {m['content']}" for m in history
     )
 
+@app.get("/health")
+async def health():
+    return {"status": "OK"}
+
 @app.post("/ask")
 async def ask_question(request: Request):
     data = await request.json()
