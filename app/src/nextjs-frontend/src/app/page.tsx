@@ -106,15 +106,15 @@ export default function Home() {
 
   const [question, setQuestion] = useState<string>("");
   // const [lastQuestion, setLastQuestion] = useState<string>(""); // NEW
-  const [answer, setAnswer] = useState<string>("");
-  const [context, setContext] = useState<any>("");
+  const [context, setContext] = useState<any>("");  // mirrors last response context for legacy use
 
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null); // dummy element at bottom for auto-scroll
 
-  // Scroll to last message when chatHistory changes
+  // Scroll to bottom whenever chat updates (including during streaming)
   useEffect(() => {
-    if (lastMsgRef.current) {
-      lastMsgRef.current.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatHistory]);
 
@@ -151,41 +151,63 @@ export default function Home() {
     ]);
     setQuestion(""); // Clear input after submit
 
-    // if the environment variable exists, use it; otherwise, default to hardocded local or production URL
+    // if the environment variable exists, use it; otherwise, default to hardcoded local or production URL
     const localServer = "http://localhost:8000";
     const prodServer = "https://pawlicy-gpt-production.up.railway.app";
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL
-      ? `${process.env.NEXT_PUBLIC_API_URL}/ask`
-      : `${process.env.NODE_ENV === 'production'
-        ? prodServer
-        : localServer}/ask`;
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL
+      ? process.env.NEXT_PUBLIC_API_URL
+      : process.env.NODE_ENV === 'production' ? prodServer : localServer;
 
-    const res = await fetch(apiUrl, {
+    // Use streaming endpoint for token-by-token display
+    const res = await fetch(`${baseUrl}/ask/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: questionText, session_id: sessionId }),
     });
-    if (!res.ok) {
+    if (!res.ok || !res.body) {
       const text = await res.text();
       console.error("Backend error:", res.status, text);
       return;
     }
-    const data = await res.json();
 
-    // Replace the last (pending) message with the real answer
-    setChatHistory((prev) => {
-      const updated = [...prev];
-      updated[updated.length - 1] = {
-        question: questionText,
-        answer: data.answer,
-        context: data.context,
-      };
-      return updated;
-    });
+    // Read SSE stream and update chat state incrementally
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-    setAnswer(data.answer);
-    setContext(data.context);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const event = JSON.parse(line.slice(6));
+
+        if (event.type === "text") {
+          // Append each token; replace "Thinking..." on first chunk
+          setChatHistory((prev) => {
+            const updated = [...prev];
+            const last = { ...updated[updated.length - 1] };
+            last.answer = last.pending ? event.content : last.answer + event.content;
+            last.pending = false;
+            updated[updated.length - 1] = last;
+            return updated;
+          });
+        } else if (event.type === "sources") {
+          // Attach source documents once streaming is complete
+          setChatHistory((prev) => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], context: event.context };
+            return updated;
+          });
+          setContext(event.context);
+        }
+      }
+    }
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -347,6 +369,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
+            <div ref={bottomRef} /> {/* scroll anchor — keeps view at bottom during streaming */}
           </div>
         )}
 

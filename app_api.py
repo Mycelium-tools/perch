@@ -17,7 +17,9 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 import uvicorn
+import json
 from app.src.query import retrieval_chain  # retrieval chain from RAG pipeline
 from app.src.query import llm  # NOTE: llm is imported but not used in the active endpoint;
                                 # it is only referenced in the commented-out history version below
@@ -82,6 +84,27 @@ async def ask_question(request: Request):
         "answer": result["answer"],
         "context": result["context"]  # list of LangChain Document objects (retrieved chunks)
     }
+
+@app.post("/ask/stream")
+async def ask_question_stream(request: Request):
+    # Streaming version of /ask — emits SSE tokens as they arrive from the LLM
+    data = await request.json()
+    user_input = data.get("question", "")
+
+    async def generate():
+        context_docs = []
+        async for chunk in retrieval_chain.astream({"input": user_input}):
+            if "context" in chunk:
+                context_docs = chunk["context"]
+            if "answer" in chunk and chunk["answer"]:
+                yield f"data: {json.dumps({'type': 'text', 'content': chunk['answer']})}\n\n"
+        # Send serialized source documents after the answer stream ends
+        serialized = [{"metadata": d.metadata, "page_content": d.page_content} for d in context_docs]
+        yield f"data: {json.dumps({'type': 'sources', 'context': serialized})}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
 
 if __name__ == "__main__":
     # Entry point for local development. In production, Railway runs uvicorn
