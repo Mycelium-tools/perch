@@ -89,9 +89,10 @@ retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
 # Use gpt-5-mini as the base model
 # temperature=0.0 makes responses deterministic (no sampling randomness).
 llm = ChatOpenAI(
-    model_name="gpt-5-mini", 
-    temperature=0.0 
-    )
+    model_name="gpt-5-mini",
+    temperature=0.0,
+    streaming=True,  # enable token-by-token streaming for /ask/stream endpoint
+)
 
 # Format documents into a string containing source name and URL that the LLM can easily parse
 document_prompt = PromptTemplate(
