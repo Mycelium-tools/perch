@@ -1,0 +1,72 @@
+[
+  {
+    "type": "web",
+    "source": "https://www.worldanimalprotection.us/latest/blogs/vegan-options-on-campus/",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Surviving the Dining Hall: How to Advocate for Vegan Options on Campus",
+      "organization": "World Animal Protection",
+      "primary_focus": "Vegan Dining",
+      "pub_date": "2025-07-10",
+      "doc_type": "blog",
+      "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
+    }
+  },
+  {
+    "type": "web",
+    "source": [
+      "https://foodispower.org/eating-vegan-in-college/advocacy-toolkits/",
+      "https://foodispower.org/eating-vegan-in-college/tips-resources/"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Food Empowerment Project",
+      "primary_focus": "Vegan Dining",
+      "pub_date": "",
+      "doc_type": "online resource",
+      "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://www.upgradedining.org/",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Upgrade Dining",
+      "primary_focus": "Vegan Dining",
+      "doc_type": "website",
+      "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
+    }
+  },
+  {
+    "type": "web",
+    "source": [
+      "https://plantbaseduniversities.org/",
+      "https://plantbaseduniversities.org/about"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Plant Based Universities",
+      "primary_focus": "Vegan Dining",
+      "pub_date": "2025-07-10",
+      "doc_type": "blog",
+      "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
+    }
+  },
+  {
+    "type": "web",
+    "source": [
+      "https://www.betterfoodfoundation.org/defaultveg-campus-programs/",
+      "https://www.betterfoodfoundation.org/initiatives/plant-based-defaults/",
+      "https://www.betterfoodfoundation.org/initiatives/plant-based-ngo-network/"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Better Food Foundation",
+      "primary_focus": "Vegan Dining",
+      "pub_date": "",
+      "doc_type": "online resource",
+      "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
+    }
+  }
+]
