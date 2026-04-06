@@ -2,23 +2,37 @@
 #
 # Document ingestion script for Perch's RAG pipeline.
 #
-# Reads document metadata from data_sources.json and ingests all PDFs into
-# Pinecone with rich metadata (organization, doc_type, tags, sections, etc.).
+# Supports PDF files and URLs:
+# - PDFs: Extracted, chunked, and embedded locally
+# - URLs: Fetched, converted to markdown, chunked, and embedded
 #
+# Reads document metadata from data_sources.json and ingests into Pinecone
+# with rich metadata (organization, doc_type, tags, sections, etc.).
 #
 # Usage:
 #   python ingest.py
 
 import os
 import json
+import hashlib
+import time
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
+import requests
+from bs4 import BeautifulSoup
+from markdownify import markdownify as md
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
-from chunking_utils import *
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.documents import Document
+from concurrent.futures import ThreadPoolExecutor
+
+# Local utility imports
+from chunking_utils import splitter, build_chunk_metadata, extract_section_titles_by_font_size
+from scraper import WebScraper
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +46,10 @@ DEFAULT_NAMESPACE = 'animal_policies'
 
 # Embedding model
 model_name = 'multilingual-e5-large'
+
+# Rate limiting: batch size and delay (in seconds)
+BATCH_SIZE = 50  # Chunks per batch
+BATCH_DELAY = 2  # Seconds between batches
 
 # Initialize Pinecone client
 pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
@@ -51,7 +69,7 @@ embeddings = PineconeEmbeddings(
 )
 
 # Ensure index exists in Pinecone
-if index_name not in pc.list_indexes().names():
+if index_name not in [idx.name for idx in pc.list_indexes()]:
     print(f"Creating index: {index_name}")
     pc.create_index(
         name=index_name,
@@ -62,197 +80,297 @@ if index_name not in pc.list_indexes().names():
     print(f"✅ Index created: {index_name}")
 else:
     print(f"✅ Using existing index: {index_name}")
+idx = pc.Index(index_name)
 
 # ============================================================================
-# BATCH INGESTION FUNCTIONS
+# HELPER FUNCTIONS - Rate-Limited Upsertion
 # ============================================================================
 
-def ingest_pdf(entry):
+def upsert_chunks_batched(chunks, index_name, embedding, namespace):
     """
-    Ingest a single PDF from a data_sources.json entry
+    Upsert chunks to Pinecone in batches to respect rate limits.
+    NOTE: This skips upserting chunks that already exist in Pinecone
+
+    Avoids 429 "Too Many Requests" errors by:
+    - Splitting chunks into BATCH_SIZE groups
+    - Upserting each batch separately
+    - Adding BATCH_DELAY seconds between batches
+    """
+    total_chunks = len(chunks)
+    if total_chunks == 0:
+        return
+
+    # 1. Collect all candidate IDs in this batch
+    candidate_ids = [c.id for c in chunks]
     
-    Args:
-        entry: Dict from data_sources.json with keys:
-               - source: relative path to PDF
-               - namespace: Pinecone namespace (default: "animal_policies")
-               - meta: metadata dict (name, url, organization, doc_type, tags, pub_date)
+    # 2. Check which IDs already exist in Pinecone
+    fetch_response = idx.fetch(ids=candidate_ids, namespace=namespace)
+    existing_ids = set(fetch_response.vectors.keys())
+    
+    # 3. Filter to only "new" chunks
+    new_chunks = [c for c in chunks if c.id not in existing_ids]
+    
+    # Metadata for logging
+    first_chunk_meta = chunks[0].metadata
+    title = first_chunk_meta.get('title', 'N/A')
+    source_val = first_chunk_meta.get('source', 'NA')
+
+    snippet = chunks[0].page_content[:100]
+    print(f"   📄 Snippet: {snippet}...")
+    if not new_chunks:
+        print(f"   ⏩ [SKIPPING INGESTION]: All {len(chunks)} chunks in this batch already exist for '{title}'.")    
+        return
+
+    # 4. Proceed with embedding and upserting only the new_chunks
+    total_new = len(new_chunks)
+    batches = [new_chunks[i:i + BATCH_SIZE] for i in range(0, total_new, BATCH_SIZE)]
+        
+    print(f"   📦 Upserting {total_new} NEW chunks from '{title}' in {len(batches)} batches...")
+    
+    for batch_num, batch in enumerate(batches, 1):
+        try:
+            PineconeVectorStore.from_documents(
+                batch,
+                index_name=index_name,
+                embedding=embedding,
+                namespace=namespace
+            )
+            print(f"   ✅ Batch {batch_num}/{len(batches)} upserted")
+            
+            # Delay before next batch
+            if batch_num < len(batches):
+                time.sleep(BATCH_DELAY)
+        except Exception as e:
+            print(f"   ❌ Batch {batch_num} failed: {e}")
+            raise
+
+     # Print stats
+    index = pc.Index(index_name)
+    stats = index.describe_index_stats()
+    ns_stats = stats.get('namespaces', {}).get(namespace, {})
+    vector_count = ns_stats.get('vector_count', 0)
+    print(f"📊 Namespace '{namespace}' now has {vector_count} vectors")
+
+# ============================================================================
+# INGESTION FUNCTIONS - PDF
+# ============================================================================
+
+def ingest_pdf(entry, json_dir=None):
+    """
+    Ingest a single PDF from a data_sources.json entry.
     """
     file_path = entry.get('source')
-    full_path = get_full_path(file_path).resolve()
+    
+    if json_dir:
+        full_path = (json_dir / file_path).resolve()
+    else:
+        full_path = get_full_path(file_path).resolve()
+    
     namespace = entry.get('namespace', DEFAULT_NAMESPACE)
     meta = entry.get('meta', {})
     
-    # Validate file exists
     if not file_path or not full_path.exists():
-        print(f"⚠️  File not found or path missing: {full_path}")
+        print(f"⚠️  File not found: {full_path}")
         return
     
-    display_name = meta.get('name') or full_path.stem # Remove file suffix if using file name
-    print(f"\n{'─'*70}")
-    print(f"Processing: {display_name}")
-    print(f"{'─'*70}")
+    display_name = meta.get('name') or full_path.stem
+    print(f"\n{'─'*70}\n[PDF] {display_name}\n{'─'*70}")
     
     try:
-        # ─────────────────────────────────────────────────────────────────
         # STEP 1: Load PDF
-        # ─────────────────────────────────────────────────────────────────
         print(f"📖 Loading PDF...")
         loader = PyPDFLoader(str(full_path))
         docs = loader.load()
         print(f"✅ Loaded {len(docs)} pages")
 
-        # ─────────────────────────────────────────────────────────────────
-        # STEP 2: Generate identifiers and timestamps
-        # ─────────────────────────────────────────────────────────────────
-        source_hash = get_source_hash(file_path)
-        ingestion_date = datetime.now().strftime("%Y-%m-%d")
-
-        # ─────────────────────────────────────────────────────────────────
-        # STEP 3: Extract section headers
-        # ─────────────────────────────────────────────────────────────────
+        # STEP 2: Extract section headers
         print(f"🔍 Extracting section headers...")
-        headings = extract_section_titles_by_font_size(full_path)
+        headings = extract_section_titles_by_font_size(str(full_path))
         print(f"✅ Found {len(headings)} sections")
 
-        # ─────────────────────────────────────────────────────────────────
-        # STEP 4: Split into chunks
-        # ─────────────────────────────────────────────────────────────────
+        # STEP 3: Split into chunks
         print(f"✂️  Splitting into chunks...")
         chunks = splitter.split_documents(docs)
         print(f"✅ Created {len(chunks)} chunks")
         
-        # ─────────────────────────────────────────────────────────────────
-        # STEP 5: Add metadata to each chunk
-        # ─────────────────────────────────────────────────────────────────
+        # STEP 4: Add metadata to each chunk
         print(f"🏷️  Adding metadata...")
         for i, chunk in enumerate(chunks):
-            # Determine section for this chunk
             current_page = chunk.metadata.get('page', 0)
             section = next(
                 (h['text'] for h in reversed(headings) if h['page'] <= current_page),
                 "General"
             )
             
-            # Build metadata
             metadata = build_chunk_metadata(
-                file_path=file_path,
-                source_hash=source_hash,
+                file_path_or_url=str(file_path),
                 chunk_index=i,
                 chunk=chunk,
                 meta=meta,
-                ingestion_date=ingestion_date
+                ingestion_date=datetime.now().strftime("%Y-%m-%d")
             )
             metadata["section"] = section
-            
-            # Attach metadata to chunk
             chunk.metadata.update(metadata)
             chunk.id = metadata["chunk_id"]
 
-        # ─────────────────────────────────────────────────────────────────
-        # STEP 6: Embed and upsert to Pinecone
-        # ─────────────────────────────────────────────────────────────────
-        print(f"🚀 Embedding and upserting...")
-        PineconeVectorStore.from_documents(
-            chunks,
-            index_name=index_name,
-            embedding=embeddings,
-            namespace=namespace
-        )
-        print(f"✅ Successfully ingested {len(chunks)} chunks into '{namespace}'")
-        
-        # Print stats
-        index = pc.Index(index_name)
-        stats = index.describe_index_stats()
-        ns_stats = stats.get('namespaces', {}).get(namespace, {})
-        vector_count = ns_stats.get('vector_count', 0)
-        print(f"📊 Namespace '{namespace}' now has {vector_count} vectors")
+        # STEP 65: Embed and upsert to Pinecone
+        upsert_chunks_batched(chunks, index_name, embeddings, namespace)
         
     except Exception as e:
         print(f"❌ Error processing {full_path}: {e}")
-        import traceback
-        traceback.print_exc()
+
+# ============================================================================
+# INGESTION FUNCTIONS - WEB (single URL or web crawl + scrape)
+# ============================================================================
+
+def ingest_web(entry):
+    config = entry.get('config', {})
+    namespace = entry.get('namespace', DEFAULT_NAMESPACE)
+
+    # Crawler configs
+    is_crawl = config.get('is_crawl', False)
+    skip_ingesting_seed = config.get('skip_ingesting_seed', False)
+    max_depth = config.get('max_depth', 1) if is_crawl else 0
+    container_selector = config.get('container_selector', None)
+
+    # Instantiate a single WebScraper to ingest all urls in the entry 
+    default_threads = 3 if is_crawl else 1
+    max_threads = config.get('max_threads', default_threads)
+    scraper = WebScraper(max_threads=max_threads)
+
+    sources = entry.get('source', [])
+    urls_to_process = sources if isinstance(sources, list) else [sources]
+    
+    total_ingested = 0
+
+    try:
+        for url in urls_to_process:
+            # STEP 1: Scrape web from source URLs, and collect additional URLs to ingest if crawling
+            print(f"\n🕸️  [WEB] Processing: {url}")
+            pages = scraper.crawl_and_scrape(
+                url, 
+                max_depth=max_depth, # When depth = 0, only scrapes the current URL (no crawling)
+                skip_ingesting_seed=skip_ingesting_seed, 
+                container_selector=container_selector
+            )
+            
+            # STEP 2: Convert each webpage to Markdown
+            for page in pages:
+                current_url = page.get('url')
+                markdown_text = page['markdown']
+                page_title = page.get('title', 'Untitled')
+                
+                if not markdown_text:
+                    continue
+
+                # STEP 3: Create Document object
+                doc = Document(
+                    page_content=markdown_text,
+                    metadata={
+                        "source": current_url, 
+                        "title": page_title.strip() if page_title else ""
+                    }
+                )
+                
+                # STEP 4: Split into chunks
+                chunks = splitter.split_documents([doc])           
+                for i, chunk in enumerate(chunks):
+                    chunk_meta = build_chunk_metadata(
+                        file_path_or_url=current_url,
+                        chunk_index=i,
+                        chunk=chunk,
+                        meta={**entry.get('meta', {}), "url": current_url},
+                        ingestion_date=datetime.now().strftime("%Y-%m-%d")
+                    )
+                    chunk.metadata.update(chunk_meta)
+                    chunk.id = chunk_meta["chunk_id"]
+
+                # STEP 5: Embed and upsert to Pinecone
+                upsert_chunks_batched(chunks, index_name, embeddings, namespace)
+                total_ingested += 1
+    finally:
+        scraper.close()
+        return total_ingested
 
 
-def run_ingestion_from_json(json_file_path):
+# ============================================================================
+# MAIN ORCHESTRATOR
+# ============================================================================
+
+def run_ingestion_from_json(json_path_str):
     """
-    Read data_sources.json and ingest all PDF entries.
+    Read data_sources.json and ingest all entries (PDF, URL, and web scrape).
+    
+    Processes entries in order:
+    - type: "pdf" → calls ingest_pdf()
+    - type: "web" → calls ingest_web()
+    - Other → skipped with warning
+    
+    Relative paths in "source" fields are resolved relative to the JSON file's directory.
     
     Args:
-        json_file_path: Path to data_sources.json
+        json_file_path: Path to data_sources.json (absolute or relative)
     """
-    if not os.path.exists(json_file_path):
-        print(f"❌ JSON file not found at: {json_file_path}")
+    json_path = Path(json_path_str).resolve()
+    
+    if not json_path.exists():
+        print(f"❌ JSON file not found at: {json_path}")
         return
 
-    with open(json_file_path, 'r', encoding='utf-8') as f:
+    with open(json_path, 'r', encoding='utf-8') as f:
         try:
             data_sources = json.load(f)
         except json.JSONDecodeError as e:
             print(f"❌ Failed to parse JSON: {e}")
             return
 
-    # Process only PDF entries
+    # Store JSON directory for resolving relative paths
+    json_dir = json_path.parent
+
+    # Process all entries
     pdf_count = 0
+    url_count = 0
+    
+    print(f"🚀 Starting ingestion for {len(data_sources)} source definitions...")
     for entry in data_sources:
-        if entry.get('type') == 'pdf':
-            ingest_pdf(entry)
-            pdf_count += 1
-        else:
-            print(f"🚫 Skipping non-PDF entry: {entry.get('source', 'Unknown')}")
+        entry_type = entry.get('type')
+        try:
+            if entry_type == 'pdf':
+                ingest_pdf(entry, json_dir)
+                pdf_count += 1
+            elif entry_type == 'web':
+                url_count += ingest_web(entry)
+            else:
+                print(f"🚫 Skipping unknown type '{entry_type}': {entry.get('source', entry.get('seed', 'Unknown'))}")
+        except Exception as e:
+            print(f"❌ Error processing entry: {e}")
     
     print(f"\n{'='*70}")
-    print(f"✅ Batch ingestion complete! Processed {pdf_count} PDFs")
+    print(f"✅ Batch ingestion complete!")
+    print(f"   PDFs processed: {pdf_count}")
+    print(f"   Web sources processed: {url_count}")
+    print(f"   Total: {pdf_count + url_count} sources")
     print(f"{'='*70}")
-
-# ============================================================================
-# UTILITY FUNCTIONS - File Path, File Hash
-# ============================================================================
-
-def get_full_path(relative_path):
-    """
-    Convert relative path to absolute path.
-    
-    Assumes paths are relative to this script's directory.
-    Allows data_sources.json entries like "sources/file.pdf" to work
-    regardless of where the script is run from.
-    
-    Args:
-        relative_path: e.g., "sources/legislation.pdf"
-    
-    Returns:
-        Absolute Path object
-    """
-    base_dir = Path(__file__).resolve().parent
-    return (base_dir / relative_path).resolve()
-
-def get_source_hash(input_string):
-    """
-    Generate unique MD5 hash for a source file path.
-    
-    Purpose: Deduplication at document level.
-    - Same file path always produces same hash
-    - Hash + chunk_index = globally unique chunk ID
-    - Enables re-ingestion without duplicates (Pinecone upserts overwrite)
-    
-    Args:
-        input_string: File path (e.g., "sources/legislation.pdf")
-    
-    Returns:
-        32-char hex string (e.g., "abc123def456...")
-    """
-    return hashlib.md5(input_string.encode()).hexdigest()
 
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
 if __name__ == "__main__":
-    current_file = Path(__file__).resolve()
-    rag_dir = current_file.parent
-    JSON_INPUT_FILE = rag_dir / "data_sources.json"
+    # Get JSON file from command-line argument or use default
+    if len(sys.argv) > 1:
+        json_file = sys.argv[1]
+    else:
+        # Default to data_sources.json in script directory
+        current_file = Path(__file__).resolve()
+        rag_dir = current_file.parent
+        json_file = str(rag_dir / "data_sources.json")
+    
+    # Resolve to absolute path
+    json_path = Path(json_file).resolve()
     
     print(f"{'='*70}")
-    print(f"🚀 Starting Resource Ingestion to Pinecone from {JSON_INPUT_FILE}")
+    print(f"🚀 Starting Batch Ingestion to Pinecone from {json_path}")
     print(f"{'='*70}")
     
-    run_ingestion_from_json(JSON_INPUT_FILE)
+    run_ingestion_from_json(str(json_path))

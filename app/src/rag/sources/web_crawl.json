@@ -1,0 +1,32 @@
+[
+  {
+    "type": "web",
+    "config": {
+      "is_crawl": true,
+      "skip_ingesting_seed": true,
+      "max_depth": 1,
+      "max_threads": 3,
+      "container_selector": "article"
+    },
+    "source": [
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2026",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2025",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2024",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2023",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2022",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2021",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2020",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2019"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "doc_type": "research project",
+      "tags": [
+        "animal advocacy",
+        "data analysis",
+        "impact studies"
+      ]
+    }
+  }
+]

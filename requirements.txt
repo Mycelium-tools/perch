@@ -11,3 +11,8 @@ langchain-openai
 langchain-text-splitters
 pypdf
 pdfplumber
+requests 
+beautifulsoup4
+markdownify
+lxml
+playwright

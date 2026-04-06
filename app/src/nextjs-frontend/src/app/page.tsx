@@ -65,17 +65,17 @@ export default function Home() {
     {
       id: 1,
       icon: "magnifying-glass-chart",
-      text: "placeholder text"
+      text: "I'm a student at Boston University and I want to push my dining hall to offer more plant-based food options. How do I get started? Are there existing programs or organizations that support this kind of campaign?"
     },
     {
       id: 2,
       icon: "pencil-paper",
-      text: "placeholder text"
+      text: "I work for the humane league (THL) and we're planning to launch a cage-free campaign targeting Crumbl cookies. What strategies have worked in other cage-free campaigns, and what are the key steps to getting a company to make a public commitment?"
     },
     {
       id: 3,
       icon: "document-review",
-      text: "placeholder text"
+      text: "I want to start a fur-free campaign in my city to push for a local ban on fur sales. What should I know before getting started? Are there any pitfalls or lessons from previous campaigns I should be aware of?"
     },
     {
       id: 4,

@@ -42,7 +42,7 @@ splitter = RecursiveCharacterTextSplitter(
 # UTILITY FUNCTIONS - Build Chunk Metadata
 # ============================================================================
 
-def build_chunk_metadata(file_path, source_hash, chunk_index, chunk, meta, ingestion_date):
+def build_chunk_metadata(file_path_or_url, chunk_index, chunk, meta, ingestion_date):
     """
     Construct rich metadata for a document chunk.
     
@@ -56,8 +56,7 @@ def build_chunk_metadata(file_path, source_hash, chunk_index, chunk, meta, inges
     - By date: {"publication_date": {"$gte": "2020-01-01"}}
     
     Args:
-        file_path: Relative path from data_sources.json
-        source_hash: MD5 hash of file_path (for deduplication)
+        file_path_or_url: Relative path from data_sources.json or URL for web/scrape ingestion
         chunk_index: Position within document (0-indexed)
         chunk: LangChain Document object (contains page metadata)
         meta: Source metadata dict from data_sources.json
@@ -66,24 +65,26 @@ def build_chunk_metadata(file_path, source_hash, chunk_index, chunk, meta, inges
     Returns:
         Dictionary of metadata to attach to chunk in Pinecone
     """
+    source_hash = get_source_hash(file_path_or_url)
     return {
         # SOURCE IDENTIFICATION (for attribution & filtering)
-        "source_name": meta.get('name') or Path(file_path).stem,
+        "source_name": meta.get('name') or Path(file_path_or_url).stem,
         "source_url": meta.get("url"),
-        "source_organization": meta.get("organization"),
-        "source_hash": source_hash,
+        "source_organization": meta.get("organization", ""),
+        # Used for deduplication in Pinecone
+        "source_hash": source_hash, 
         
         # CHUNK POSITIONING (for context & reconstruction)
         "chunk_index": chunk_index,
         "page_number": chunk.metadata.get("page", 0) + 1,
         
         # DOCUMENT CLASSIFICATION (for semantic filtering)
-        "doc_type": meta.get("doc_type"),
-        "primary_focus": meta.get("primary_focus"),
+        "doc_type": meta.get("doc_type", ""),
+        "primary_focus": meta.get("primary_focus", ""),
         "tags": meta.get("tags", []),
         
         # TEMPORAL METADATA (for date-based filtering)
-        "publication_date": meta.get("pub_date"),
+        "publication_date": meta.get("pub_date", ""),
         "ingestion_date": ingestion_date,
         
         # CHUNK IDENTIFICATION (for Pinecone consistency)
@@ -374,3 +375,42 @@ def print_headings(headings):
             print(f"   {i:2d}. [{method:8s}] p.{page:3d} - {display_text}")
     else:
         print(f"\n⚠️  No section titles found")
+
+
+# ============================================================================
+# UTILITY FUNCTIONS - File Path, File Hash
+# ============================================================================
+
+def get_full_path(relative_path):
+    """
+    Convert relative path to absolute path.
+
+    Assumes paths are relative to this script's directory.
+    Allows data_sources.json entries like "sources/file.pdf" to work
+    regardless of where the script is run from.
+
+    Args:
+        relative_path: e.g., "sources/legislation.pdf"
+
+    Returns:
+        Absolute Path object
+    """
+    base_dir = Path(__file__).resolve().parent
+    return (base_dir / relative_path).resolve()
+
+def get_source_hash(input_string):
+    """
+    Generate unique MD5 hash for a source file path.
+
+    Purpose: Deduplication at document level.
+    - Same file path always produces same hash
+    - Hash + chunk_index = globally unique chunk ID
+    - Enables re-ingestion without duplicates (Pinecone upserts overwrite)
+
+    Args:
+        input_string: File path (e.g., "sources/legislation.pdf")
+
+    Returns:
+        32-char hex string (e.g., "abc123def456...")
+    """
+    return hashlib.md5(input_string.encode()).hexdigest()
