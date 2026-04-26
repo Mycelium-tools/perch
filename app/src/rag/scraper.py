@@ -6,6 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 from playwright.sync_api import sync_playwright
 from markdownify import markdownify as md
 
+# Domains known to use SPA (and therefore require headless browser)
+SPA_DOMAINS = {
+    "thehumaneleague.org"
+}
+
 class WebScraper:
     """
     WebScraper supports:
@@ -132,12 +137,13 @@ class WebScraper:
             is_seed_layer = (depth == 0)
 
             with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
+                use_js = get_scraping_mode(target_url) or is_seed_layer # JS for seed only, unless the domain is known to use SPA
                 futures = [
                     executor.submit(
                         self.scrape,
                         u,
                         container_selector=container_selector,
-                        use_js=is_seed_layer  # JS for seed only
+                        use_js=use_js
                     )
                     for u in current_layer
                 ]

@@ -1,13 +1,24 @@
 [
   {
     "type": "pdf",
+    "source": "pdfs/Beacon_Issue_4_Dec_2024.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Tiny Beam Fund",
+      "primary_focus": "farmed_animals",
+      "pub_date": "2024-12-01",
+      "doc_type": "report",
+      "tags": ["industrial animal agriculture", "global south", "externalities", "zoonosis"]
+    }
+  },
+  {
+    "type": "pdf",
     "source": "pdfs/fur_sale_ban_2019.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Proposed Int. No. 1476-A",
-      "url": "https://legistar.council.nyc.gov/LegislationDetail.aspx?ID=3903503&GUID=EBE55293-8737-4620-945A-308ADC3A23DC",
       "organization": "NYC City Council",
-      "primary_focus": "Farmed Animals",
+      "primary_focus": "farmed_animals",
       "pub_date": "2025-09-25",
       "doc_type": "report",
       "tags": ["nyc", "fur", "farmed animals", "animal advocacy", "legislation"]
@@ -18,13 +29,11 @@
     "source": "pdfs/carriage_horse_heat_2019.pdf",
     "namespace": "animal_policies",
     "meta": {
-      "name": "Rental Horse Licensing and Protection Law",
-      "url": "https://nycadmincode.readthedocs.io/t17/c03/sch03/",
-      "organization": "NYC Adminstrative Code",
-      "primary_focus": "Animals in Entertainment",
+      "organization": "NYC Administrative Code",
+      "primary_focus": "farmed_animals",
       "pub_date": "2018-02-24",
-      "doc_type": "legal code",
-      "tags": ["nyc", "hose", "horse drawn cabs", "animal welfare", "legislation"]
+      "doc_type": "report",
+      "tags": ["nyc", "horse", "horse drawn cabs", "animal welfare", "legislation"]
     }
   }
 ]

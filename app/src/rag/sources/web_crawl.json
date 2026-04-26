@@ -5,6 +5,29 @@
       "is_crawl": true,
       "skip_ingesting_seed": true,
       "max_depth": 1,
+      "max_threads": 3
+    },
+    "source": [
+      "https://thehumaneleague.org/research-reports"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "The Humane League",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "tags": [
+        "animal advocacy",
+        "data analysis",
+        "impact studies"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "config": {
+      "is_crawl": true,
+      "skip_ingesting_seed": true,
+      "max_depth": 1,
       "max_threads": 3,
       "container_selector": "article"
     },
@@ -21,7 +44,8 @@
     "namespace": "animal_policies",
     "meta": {
       "organization": "Faunalytics",
-      "doc_type": "research project",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
       "tags": [
         "animal advocacy",
         "data analysis",
