@@ -31,7 +31,8 @@ from langchain_core.documents import Document
 from concurrent.futures import ThreadPoolExecutor
 
 # Local utility imports
-from chunking_utils import splitter, build_chunk_metadata, extract_section_titles_by_font_size
+from chunking_utils import splitter, build_chunk_metadata_validated
+from parsing_utils import parse_pdf_with_sections
 from scraper import WebScraper
 
 # Load environment variables
@@ -85,6 +86,26 @@ idx = pc.Index(index_name)
 # ============================================================================
 # HELPER FUNCTIONS - Rate-Limited Upsertion
 # ============================================================================
+def fetch_metadata_batched(idx, candidate_ids, namespace, batch_size=30):
+    """
+    Fetches metadata in small batches to avoid 414 Request-URI Too Large errors.
+    """
+    all_fetched = {}
+    
+    # Break the long list of IDs into small batches (e.g., 30 at a time)
+    for i in range(0, len(candidate_ids), batch_size):
+        batch = candidate_ids[i : i + batch_size]
+        try:
+            fetch_response = idx.fetch(ids=batch, namespace=namespace)
+            all_fetched.update(fetch_response.vectors)
+        except Exception as e:
+            if "414" in str(e):
+                print(f"⚠️ Batch size {batch_size} still too large, retrying smaller...")
+                # Recursive fallback if IDs are exceptionally long
+                return fetch_metadata_safely(idx, candidate_ids, namespace, batch_size=10)
+            raise e
+            
+    return all_fetched
 
 def upsert_chunks_batched(chunks, index_name, embedding, namespace):
     """
@@ -102,10 +123,11 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
 
     # 1. Collect all candidate IDs in this batch
     candidate_ids = [c.id for c in chunks]
-    
+
     # 2. Check which IDs already exist in Pinecone
-    fetch_response = idx.fetch(ids=candidate_ids, namespace=namespace)
-    existing_ids = set(fetch_response.vectors.keys())
+    fetch_response = fetch_metadata_batched(idx, candidate_ids,namespace)
+
+    existing_ids = set(fetch_response.keys())
     
     # 3. Filter to only "new" chunks
     new_chunks = [c for c in chunks if c.id not in existing_ids]
@@ -185,7 +207,7 @@ def ingest_pdf(entry, json_dir=None):
 
         # STEP 2: Extract section headers
         print(f"🔍 Extracting section headers...")
-        headings = extract_section_titles_by_font_size(str(full_path))
+        headings = parse_pdf_with_sections(str(full_path))
         print(f"✅ Found {len(headings)} sections")
 
         # STEP 3: Split into chunks
@@ -197,23 +219,22 @@ def ingest_pdf(entry, json_dir=None):
         print(f"🏷️  Adding metadata...")
         for i, chunk in enumerate(chunks):
             current_page = chunk.metadata.get('page', 0)
-            section = next(
+            section_title = next(
                 (h['text'] for h in reversed(headings) if h['page'] <= current_page),
                 "General"
             )
             
-            metadata = build_chunk_metadata(
+            metadata = build_chunk_metadata_validated(
                 file_path_or_url=str(file_path),
                 chunk_index=i,
                 chunk=chunk,
                 meta=meta,
-                ingestion_date=datetime.now().strftime("%Y-%m-%d")
+                section_title=section_title
             )
-            metadata["section"] = section
             chunk.metadata.update(metadata)
             chunk.id = metadata["chunk_id"]
 
-        # STEP 65: Embed and upsert to Pinecone
+        # STEP 5: Embed and upsert to Pinecone
         upsert_chunks_batched(chunks, index_name, embeddings, namespace)
         
     except Exception as e:
@@ -275,12 +296,11 @@ def ingest_web(entry):
                 # STEP 4: Split into chunks
                 chunks = splitter.split_documents([doc])           
                 for i, chunk in enumerate(chunks):
-                    chunk_meta = build_chunk_metadata(
+                    chunk_meta = build_chunk_metadata_validated(
                         file_path_or_url=current_url,
                         chunk_index=i,
                         chunk=chunk,
-                        meta={**entry.get('meta', {}), "url": current_url},
-                        ingestion_date=datetime.now().strftime("%Y-%m-%d")
+                        meta={**entry.get('meta', {}), "url": current_url}
                     )
                     chunk.metadata.update(chunk_meta)
                     chunk.id = chunk_meta["chunk_id"]

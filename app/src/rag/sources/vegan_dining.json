@@ -1,14 +1,73 @@
 [
   {
+    "type": "pdf",
+    "source": "pdfs/The State of Animal Advocacy Universities.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Allied Scholars for Animal Protection",
+      "primary_focus": "effective_advocacy",
+      "pub_date": "2024-12-01",
+      "doc_type": "report",
+      "tags": ["student advocacy", "campus organizing", "university groups", "animal protection"]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "pdfs/Case-for-Plant-Based-University-Catering.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Bryant Research",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "pub_date": "2024-01-01",
+      "doc_type": "report",
+      "tags": ["university catering", "carbon footprint", "cost effectiveness", "institutional shift"]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "pdfs/Educational Presentations Reduce Meat Consumption Across Two Universities.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Bryant Research",
+      "primary_focus": "effective_advocacy",
+      "pub_date": "2025-12-04",
+      "doc_type": "academic_paper",
+      "tags": ["meat reduction", "educational intervention", "behavior change", "university students"]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "pdfs/Eating apart together how vegetarian and meateating students manage commensality in aflexitarian age.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Aeres University of Applied Sciences",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "pub_date": "2023-02-22",
+      "doc_type": "academic_paper",
+      "tags": ["commensality", "shared households", "social dynamics", "flexitarianism"]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "pdfs/Ideological resistance to vegan advocacy An identity based motivational account.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Frontiers in Psychology",
+      "primary_focus": "effective_advocacy",
+      "pub_date": "2022-11-30",
+      "doc_type": "academic_paper",
+      "tags": ["vegan advocacy", "identity", "psychological resistance", "motivated reasoning"]
+    }
+  },
+  {
     "type": "web",
     "source": "https://www.worldanimalprotection.us/latest/blogs/vegan-options-on-campus/",
     "namespace": "animal_policies",
     "meta": {
-      "name": "Surviving the Dining Hall: How to Advocate for Vegan Options on Campus",
       "organization": "World Animal Protection",
-      "primary_focus": "Vegan Dining",
+      "primary_focus": "vegan_diet_and_lifestyle",
       "pub_date": "2025-07-10",
-      "doc_type": "blog",
+      "doc_type": "article",
       "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
     }
   },
@@ -21,9 +80,9 @@
     "namespace": "animal_policies",
     "meta": {
       "organization": "Food Empowerment Project",
-      "primary_focus": "Vegan Dining",
+      "primary_focus": "vegan_diet_and_lifestyle",
       "pub_date": "",
-      "doc_type": "online resource",
+      "doc_type": "website",
       "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
     }
   },
@@ -33,7 +92,8 @@
     "namespace": "animal_policies",
     "meta": {
       "organization": "Upgrade Dining",
-      "primary_focus": "Vegan Dining",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "pub_date": "",
       "doc_type": "website",
       "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
     }
@@ -47,9 +107,9 @@
     "namespace": "animal_policies",
     "meta": {
       "organization": "Plant Based Universities",
-      "primary_focus": "Vegan Dining",
+      "primary_focus": "vegan_diet_and_lifestyle",
       "pub_date": "2025-07-10",
-      "doc_type": "blog",
+      "doc_type": "website",
       "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
     }
   },
@@ -63,9 +123,9 @@
     "namespace": "animal_policies",
     "meta": {
       "organization": "Better Food Foundation",
-      "primary_focus": "Vegan Dining",
+      "primary_focus": "vegan_diet_and_lifestyle",
       "pub_date": "",
-      "doc_type": "online resource",
+      "doc_type": "website",
       "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
     }
   }
