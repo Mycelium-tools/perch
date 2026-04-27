@@ -354,15 +354,26 @@ export default function Home() {
                                 doc
                               ])
                             ).values()
-                          ).map((doc: any, cidx: number) => (
-                            <li key={cidx} className="text-sm border-l-4 border-green-500 pl-4 py-1">
-                              <a href={doc.metadata?.source_url || ""} target="_blank">
-                                <div className="font-bold text-gray-900">
-                                  {doc.metadata?.source_name || "Untitled"} | {doc.metadata?.source_organization || ""}
-                                </div>
-                              </a>
-                            </li>
-                          ))}
+                          ).map((doc: any, cidx: number) => {
+                            const url = doc.metadata?.source_url || "";
+                            const isUrl = url.startsWith("http"); // Check if it's a web link or a file path
+                            const content = (
+                              <div className="font-bold text-gray-900">
+                                {doc.metadata?.source_name || "Untitled"} | {doc.metadata?.source_organization || ""}
+                              </div>
+                            );return (
+                              <li key={cidx} className="text-sm border-l-4 border-green-500 pl-4 py-1">
+                                {isUrl ? (
+                                  <a href={url} target="_blank" rel="noopener noreferrer">
+                                    {content}
+                                  </a>
+                                ) : (
+                                  content
+                                )}
+                              </li>
+                            );
+                          }
+                          )}
                         </ul>
                       </div>
                   )}

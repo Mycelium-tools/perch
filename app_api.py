@@ -24,7 +24,9 @@ from app.src.query import retrieval_chain  # retrieval chain from RAG pipeline
 from app.src.query import llm  # NOTE: llm is imported but not used in the active endpoint;
                                 # it is only referenced in the commented-out history version below
 
+
 app = FastAPI()
+
 
 # CORS middleware: allows the Vercel frontend (a different origin) to call this API.
 # allow_origins=["*"] permits requests from any origin — acceptable for development,
@@ -38,9 +40,7 @@ app.add_middleware(
 )
 
 # In-memory store mapping session_id -> list of message dicts.
-# NOTE: not used by the active /ask endpoint — only referenced in the
-# commented-out multi-turn version below. Would reset on server restart;
-# use a database for persistence in production.
+# Resets on server restart; TODO: use a database for persistence in production.
 user_histories = {}
 
 def build_history_text(history):
@@ -60,10 +60,21 @@ async def ask_question(request: Request):
     data = await request.json()
     user_input = data.get("question", "")
 
+    # Ensure conversation history persists per session
+    session_id = data.get("session_id", "default") # TODO implement session IDs
+    history = user_histories.get(session_id, [])
+    
     # Invoke the RAG chain: embeds the question, retrieves relevant chunks from
     # Pinecone, and passes them to Gemini via the custom prompt in query.py.
     # Returns {"answer": str, "context": list[Document]}.
-    result = retrieval_chain.invoke({"input": user_input})
+    result = retrieval_chain.invoke({
+        "input": user_input,
+        "chat_history": history
+    })
+
+    history.append({"role": "user", "content": user_input})
+    history.append({"role": "assistant", "content": result["answer"]})
+    user_histories[session_id] = history
 
     # DEBUG LOGGING: Loop through retrieved chunks and log to terminal
     print(f"\n--- RETRIEVAL DEBUG FOR: '{user_input}' ---")
@@ -74,7 +85,7 @@ async def ask_question(request: Request):
             name = doc.metadata.get("source_name", "Unknown Name")
             url = doc.metadata.get("source_url", "No URL")
             # Print a snippet of the text to verify the content matches the metadata
-            snippet = doc.page_content[:50].replace('\n', ' ')
+            snippet = doc.page_content[:250].replace('\n', ' ')
             print(f"[{i+1}] NAME: {name}")
             print(f"    URL:  {url}")
             print(f"    TEXT: {snippet}...")
@@ -83,7 +94,7 @@ async def ask_question(request: Request):
     return {
         "answer": result["answer"],
         "context": result["context"]  # list of LangChain Document objects (retrieved chunks)
-    }
+    }    
 
 @app.post("/ask/stream")
 async def ask_question_stream(request: Request):
@@ -91,13 +102,37 @@ async def ask_question_stream(request: Request):
     data = await request.json()
     user_input = data.get("question", "")
 
+    # Ensure conversation history persists per session
+    session_id = data.get("session_id", "default") # TODO implement session IDs
+    history = user_histories.get(session_id, [])
+
     async def generate():
         context_docs = []
-        async for chunk in retrieval_chain.astream({"input": user_input}):
+        full_answer = ""
+        async for chunk in retrieval_chain.astream({"input": user_input, "chat_history": history}):
             if "context" in chunk:
                 context_docs = chunk["context"]
+                # --- DEBUG LOGGING START ---
+                for i, doc in enumerate(context_docs):
+                    name = doc.metadata.get("source_name", "Unknown Name")
+                    url = doc.metadata.get("source_url", "No URL")
+                    chunk_id = doc.metadata.get("chunk_id", "No ID")
+                    # Print a snippet of the text to verify the content matches the metadata
+                    snippet = doc.page_content[:250].replace('\n', ' ')
+                    print(f"[{i+1}] NAME: {name}")
+                    print(f"    URL:  {url}")
+                    print(f"    chunk_id:  {chunk_id}")
+                    print(f"    TEXT: {snippet}...")
+                # --- DEBUG LOGGING END ---
             if "answer" in chunk and chunk["answer"]:
+                full_answer += chunk["answer"]
                 yield f"data: {json.dumps({'type': 'text', 'content': chunk['answer']})}\n\n"
+        
+        # Save chat history to session
+        history.append({"role": "user", "content": user_input})
+        history.append({"role": "assistant", "content": full_answer})
+        user_histories[session_id] = history
+
         # Send serialized source documents after the answer stream ends
         serialized = [{"metadata": d.metadata, "page_content": d.page_content} for d in context_docs]
         yield f"data: {json.dumps({'type': 'sources', 'context': serialized})}\n\n"

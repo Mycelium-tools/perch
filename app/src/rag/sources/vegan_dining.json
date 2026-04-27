@@ -1,6 +1,19 @@
 [
   {
     "type": "pdf",
+    "source": "pdfs/E013R01-surveying-dining-services-2017-2018.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Surveying US College and University Dining Services for Potential Collaboration on Diet Change Research 2017–2018",
+      "organization": "Humane League Labs",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "pub_date": "2019-02-20",
+      "doc_type": "report",
+      "tags": ["student advocacy", "campus organizing", "university groups", "animal protection", "university dining", "diet"]
+    }
+  },
+    {
+    "type": "pdf",
     "source": "pdfs/The State of Animal Advocacy Universities.pdf",
     "namespace": "animal_policies",
     "meta": {
@@ -16,6 +29,7 @@
     "source": "pdfs/Case-for-Plant-Based-University-Catering.pdf",
     "namespace": "animal_policies",
     "meta": {
+      "name": "Climate-Conscious & Cost-Effective: The Case for Plant-Based University Catering",
       "organization": "Bryant Research",
       "primary_focus": "vegan_diet_and_lifestyle",
       "pub_date": "2024-01-01",
