@@ -23,35 +23,41 @@ from pinecone import Pinecone
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from langchain_classic.chains.retrieval import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+from langchain_classic.chains import create_history_aware_retriever
 from langchain_classic import hub
 from langchain_classic.chains.query_constructor.base import AttributeInfo
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate, MessagesPlaceholder
 
 system_prompt = (
-    "CONTEXT FROM DOCUMENTS:\n{context}\n\n"
-    "You are an expert advisor for animal advocacy organizations. Your role is to provide "
-    "actionable, evidence-based guidance on animal welfare policy, legislation, and advocacy strategy. "
-    "Ground your responses in research, case studies, and real-world examples found in the context.\n"
-    "\n\n"
-    "INSTRUCTIONS:\n"
-    "1. **Structure**: Use ## Headers to organize sections. Use * for bullet points and ** for bold emphasis on key terms.\n"
-    "2. **Formatting**: Each section header should be on its own line followed by a blank line. Bullet points should be concise (one idea per bullet).\n"
-    "3. **Specificity**: Avoid generic advice. Reference concrete examples, jurisdictions, or policy mechanisms when possible. If you don't have specific information, say so.\n"
-    "4. **Sources**: Never mention 'the documents' or 'the context provided.' If no relevant sources exist for your answer, acknowledge the gap and provide general knowledge if helpful.\n"
-    "5. **Tone**: Professional and grounded. Assume the user has domain expertise in animal advocacy.\n"
+    """
+    CONTEXT FROM DOCUMENTS: {context}
+
+    You are an expert advisor for animal advocacy organizations. You are NOT a general conversation partner or a generic assistant.
+    Your role is to provide actionable, evidence-based guidance on animal welfare policy, legislation, and advocacy strategy grounded in the context. 
+    If the user makes a statement that's not clearly related to animal advocacy, BRIEFLY ask for clarity before responding. 
+
+    INSTRUCTIONS for actionable questions:
+    1. Structure: Use ## Headers to organize sections. Use * for bullet points and ** for bold emphasis on key terms.
+    2. Formatting: Each section header should be on its own line followed by a blank line. Bullet points should be concise (one idea per bullet).
+    3. Specificity: Avoid generic advice. Reference concrete examples, research, or policy mechanisms when possible. If you don't have specific information, say so.
+    4. Sources: Never mention 'the documents' or 'the context provided.' If no relevant sources exist for your answer, acknowledge the gap and provide general knowledge if helpful.
+    5. Tone: Professional and grounded. Assume the user has domain expertise in animal advocacy. Answer questions directly and err on the side of brevity.
+"""
 )
 
 # Custom prompt passed to the LLM.
 # 1. Use ChatPromptTemplate for better GPT-5 instruction following.
 # 2. Use .strip() or left-aligned text to avoid passing "tab" spaces to the LLM.
 
+
 # input_variables must match the keys the chain injects:
 #   - {context}: the retrieved document chunks, formatted as a single string by create_stuff_documents_chain
 #   - {input}: the user's question, passed directly from retrieval_chain.invoke({"input": ...})
 custom_prompt = ChatPromptTemplate.from_messages([
     ("system", system_prompt.strip()),
-    ("human", "From an animal advocacy perspective, {input}"),
+    MessagesPlaceholder(variable_name="chat_history"),
+    ("human", "{input}" ),
 ])
 
 # Pinecone config — must match what was used at ingest time.
@@ -110,9 +116,29 @@ combine_docs_chain = create_stuff_documents_chain(
 )
 
 # Optionally filter retrieved chunks by similarity score (0–1).
-# Score threshold of 0.8 means only chunks with cosine similarity >= 0.8 are returned.
-retriever = docsearch.as_retriever(search_kwargs={"score_threshold": 0.8})
+# Score threshold of 0.85 means only chunks with cosine similarity >= 0.85 are returned.
+retriever = docsearch.as_retriever(search_kwargs={
+    "score_threshold": 0.85
+})
+
+# Ensure conversations have chat history saved and the retriever is aware of history
+contextualize_q_system_prompt = (
+    """
+    Given the chat history and the latest user question which might reference previous context, 
+    formulate a standalone question that can be understood without the chat history. 
+    If the user's statement is a personal fact or irrelevant to animal advocacy, return an empty 
+    string or a 'no-op' keyword to prevent unrelated retrieval.
+    """
+)
+contextualize_q_prompt = ChatPromptTemplate.from_messages([
+    ("system", contextualize_q_system_prompt),
+    MessagesPlaceholder("chat_history"),
+    ("human", "{input}"),
+])
+history_aware_retriever = create_history_aware_retriever(
+    llm, retriever, contextualize_q_prompt
+)
 
 # create_retrieval_chain: wraps the retriever + combine_docs_chain into one pipeline.
 # Calling retrieval_chain.invoke({"input": question}) returns {"answer": ..., "context": ...}.
-retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)
+retrieval_chain = create_retrieval_chain(history_aware_retriever, combine_docs_chain)

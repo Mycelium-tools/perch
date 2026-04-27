@@ -125,7 +125,7 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
     candidate_ids = [c.id for c in chunks]
 
     # 2. Check which IDs already exist in Pinecone
-    fetch_response = fetch_metadata_batched(idx, candidate_ids,namespace)
+    fetch_response = fetch_metadata_batched(idx, candidate_ids, namespace)
 
     existing_ids = set(fetch_response.keys())
     
@@ -134,20 +134,19 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
     
     # Metadata for logging
     first_chunk_meta = chunks[0].metadata
-    title = first_chunk_meta.get('title', 'N/A')
-    source_val = first_chunk_meta.get('source', 'NA')
+    name = first_chunk_meta.get('source_name', 'N/A')
 
     snippet = chunks[0].page_content[:100]
     print(f"   📄 Snippet: {snippet}...")
     if not new_chunks:
-        print(f"   ⏩ [SKIPPING INGESTION]: All {len(chunks)} chunks in this batch already exist for '{title}'.")    
+        print(f"   ⏩ [SKIPPING INGESTION]: All {len(chunks)} chunks in this batch already exist for '{name}'.")    
         return
 
     # 4. Proceed with embedding and upserting only the new_chunks
     total_new = len(new_chunks)
     batches = [new_chunks[i:i + BATCH_SIZE] for i in range(0, total_new, BATCH_SIZE)]
         
-    print(f"   📦 Upserting {total_new} NEW chunks from '{title}' in {len(batches)} batches...")
+    print(f"   📦 Upserting {total_new} NEW chunks from '{name}' in {len(batches)} batches...")
     
     for batch_num, batch in enumerate(batches, 1):
         try:
@@ -197,6 +196,8 @@ def ingest_pdf(entry, json_dir=None):
     
     display_name = meta.get('name') or full_path.stem
     print(f"\n{'─'*70}\n[PDF] {display_name}\n{'─'*70}")
+    if 'name' not in meta:
+        meta['name'] = display_name
     
     try:
         # STEP 1: Load PDF
