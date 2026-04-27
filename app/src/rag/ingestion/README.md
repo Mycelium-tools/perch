@@ -12,27 +12,28 @@ All documents are chunked with the `multilingual-e5-large` embedding model and s
 ### 1. Organize Your Documents
 
 ```
-sources/
-├── data_sources.json       ← Configuration file
+ingestion/
+├── config/                 ← Configuration files
+│   └── data_sources.json
 ├── pdfs/                   ← PDF files
 │   ├── document1.pdf
 │   └── document2.pdf
 ```
 
-### 2. Create data_sources.json
+### 2. Create ingestion JSON config 
 
-In the `sources/` directory, create `data_sources.json` with entries for documents to ingest. See [Data Sources Format](#data-sources-format) below for detailed examples.
+Create a JSON file (e.g. data_sources.json) in the config/ directory with entries for documents to ingest. See [Data Sources Format](#data-sources-format) below for detailed examples.
 
 ### 3. Run Ingestion
 
 ```bash
-python ingest.py sources/data_sources.json
+python ingest.py config/data_sources.json
 ```
 
 Or if running from the script directory:
 
 ```bash
-python ingest.py path/to/sources/data_sources.json
+python ingest.py path/to/config/data_sources.json
 ```
 
 The script will:
@@ -49,7 +50,7 @@ The script will:
 
 ## Data Sources Format
 
-`data_sources.json` is a JSON array where each entry describes a single document to ingest. Three types are supported:
+`data_sources.json` is a JSON array where each entry describes a single document to ingest. Two types are supported:
 
 ### Type 1: PDF File
 
@@ -132,11 +133,12 @@ These fields can be included in the `meta` object for any document type:
 
 ## Section Title Extraction (PDFs Only)
 
-For PDF documents, the script automatically detects section headers using three complementary methods:
+For PDF documents, we first try to read the file's Table of Contents Metadata for document structure, if available. 
 
+If not, the script attemps to detects section headers using three complementary methods:
 1. **Font Size Detection** — Finds text larger than the median font size
 2. **Bold Detection** — Identifies lines where entire text is bold
-3. **Pattern Matching** — Matches legal symbols (`§`), keywords (`Chapter`, `Section`, `Article`), and ALL-CAPS titles
+3. **Pattern Matching** (fallback) — Matches legal symbols (`§`), keywords (`Chapter`, `Section`, `Article`), and ALL-CAPS titles
 
 Each chunk is tagged with its parent section, enabling section-based filtering:
 
@@ -153,7 +155,7 @@ This works best for structured documents (legislation, reports) and degrades gra
 
 ## Chunk Metadata
 
-Each chunk carries rich metadata attached to the vector:
+Each chunk carries rich metadata attached to the vector. Types should conform to those defined in `taxonomies.py`
 
 ```json
 {
@@ -233,24 +235,11 @@ python ingest.py /home/user/perch/sources/data_sources.json
 
 The script will resolve all PDF paths relative to the JSON file's directory.
 
-### Example Directory Structure
 
-```
-project/
-├── ingest.py
-├── chunking_utils.py
-└── sources/
-    ├── data_sources.json
-    ├── pdfs/
-    │   ├── document1.pdf
-    │   └── document2.pdf
-    └── ...other data files
-```
-
-Run from project root:
+Run from ingestion script directory:
 
 ```bash
-python ingest.py sources/data_sources.json
+python ingest.py config/data_sources.json
 ```
 <details>
 <summary>Sample output:</summary>
@@ -362,7 +351,7 @@ To fully remove a document:
 
 ## Integration with Query Pipeline
 
-Once documents are ingested, the query pipeline (`query.py`) automatically:
+Once documents are ingested, the query pipeline (`../query.py`) automatically:
 
 1. Embeds user queries using `multilingual-e5-large` (same model)
 2. Searches Pinecone for most-similar chunks

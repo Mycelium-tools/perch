@@ -1,7 +1,7 @@
 [
   {
     "type": "pdf",
-    "source": "pdfs/Beacon_Issue_4_Dec_2024.pdf",
+    "source": "../pdfs/Beacon_Issue_4_Dec_2024.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Tiny Beam Fund",
@@ -13,7 +13,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/fur_sale_ban_2019.pdf",
+    "source": "../pdfs/fur_sale_ban_2019.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Proposed Int. No. 1476-A",
@@ -26,7 +26,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/carriage_horse_heat_2019.pdf",
+    "source": "../pdfs/carriage_horse_heat_2019.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "NYC Administrative Code",

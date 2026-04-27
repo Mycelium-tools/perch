@@ -1,7 +1,7 @@
 [
   {
     "type": "pdf",
-    "source": "pdfs/E013R01-surveying-dining-services-2017-2018.pdf",
+    "source": "../pdfs/E013R01-surveying-dining-services-2017-2018.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Surveying US College and University Dining Services for Potential Collaboration on Diet Change Research 2017–2018",
@@ -14,7 +14,7 @@
   },
     {
     "type": "pdf",
-    "source": "pdfs/The State of Animal Advocacy Universities.pdf",
+    "source": "../pdfs/The State of Animal Advocacy Universities.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Allied Scholars for Animal Protection",
@@ -26,7 +26,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Case-for-Plant-Based-University-Catering.pdf",
+    "source": "../pdfs/Case-for-Plant-Based-University-Catering.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Climate-Conscious & Cost-Effective: The Case for Plant-Based University Catering",
@@ -39,7 +39,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Educational Presentations Reduce Meat Consumption Across Two Universities.pdf",
+    "source": "../pdfs/Educational Presentations Reduce Meat Consumption Across Two Universities.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Bryant Research",
@@ -51,7 +51,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Eating apart together how vegetarian and meateating students manage commensality in aflexitarian age.pdf",
+    "source": "../pdfs/Eating apart together how vegetarian and meateating students manage commensality in aflexitarian age.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Aeres University of Applied Sciences",
@@ -63,7 +63,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Ideological resistance to vegan advocacy An identity based motivational account.pdf",
+    "source": "../pdfs/Ideological resistance to vegan advocacy An identity based motivational account.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Frontiers in Psychology",
