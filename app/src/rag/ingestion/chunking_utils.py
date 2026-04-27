@@ -1,24 +1,9 @@
 # chunking_utils.py
 #
 # Utilities for chunking documents to be ingested into Pinecone.
-# Provides: text splitting, metadata building, section extraction
-#
-# PDF SECTION EXTRACTION STRATEGY (3-method combined approach):
-# ────────────────────────────────────────────────────────────────────────
-# 1. Font size detection: Identifies large text (visual hierarchy)
-#
-# 2. Bold detection: Captures lines where ENTIRE text is bold. 
-#    Skips lines with mixed formatting
-#
-# 3. Pattern matching: Matches known heading patterns
-#    Examples: § symbols, "Chapter", "Article", ALL-CAPS text
-#
-# All three methods run independently. Results are deduplicated by text
-# to avoid capturing the same heading twice with different methods.
+# Provides: metadata building, file utils
 
-import os
 import hashlib
-import pdfplumber
 from pathlib import Path
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from taxonomies import ChunkMetadata
@@ -42,7 +27,7 @@ splitter = RecursiveCharacterTextSplitter(
 # ============================================================================
 # UTILITY FUNCTIONS - Build Chunk Metadata
 # ============================================================================
-def build_chunk_metadata_validated(file_path_or_url, chunk_index, chunk, meta, section_title = ""):
+def build_chunk_metadata_validated(file_path_or_url, chunk_index, chunk, meta, section = ""):
     """
     Creates a validated metadata object using the Pydantic ChunkMetadata schema.
     """
@@ -58,7 +43,7 @@ def build_chunk_metadata_validated(file_path_or_url, chunk_index, chunk, meta, s
         primary_focus=meta.get("primary_focus"), # Validates against Enum
         doc_type=meta.get("doc_type"),           # Validates against Enum
         source_url=file_path_or_url,
-        section=section_title,
+        section=section,
         source_hash=source_hash,
         chunk_index=chunk_index,
         chunk_id=f"{source_hash}_{chunk_index}",
@@ -118,8 +103,6 @@ def build_chunk_metadata(file_path_or_url, chunk_index, chunk, meta, ingestion_d
         # CHUNK IDENTIFICATION (for Pinecone consistency)
         "chunk_id": f"{source_hash}_{chunk_index}",
     }
-
-
 
 
 # ============================================================================
