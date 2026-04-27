@@ -1,7 +1,7 @@
 [
   {
     "type": "pdf",
-    "source": "pdfs/Sustainable Food Consumption in China.pdf",
+    "source": "../pdfs/Sustainable Food Consumption in China.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Routledge",
@@ -13,7 +13,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Navigating Dietary Shift Strategies for Promoting Plant-Based Diets in China.pdf",
+    "source": "../pdfs/Navigating Dietary Shift Strategies for Promoting Plant-Based Diets in China.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "University of Otago",
@@ -25,7 +25,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Industry Costs For Chicken, Egg, And Fish Products In The United States, Brazil, And China.pdf",
+    "source": "../pdfs/Industry Costs For Chicken, Egg, And Fish Products In The United States, Brazil, And China.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Faunalytics",
@@ -37,7 +37,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Report - Research and Data Phase II - China and Southeast Asia.pdf",
+    "source": "../pdfs/Report - Research and Data Phase II - China and Southeast Asia.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Faunalytics",
@@ -49,7 +49,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Chinese Consumers' Attitudes Toward Animal Welfare.pdf",
+    "source": "../pdfs/Chinese Consumers' Attitudes Toward Animal Welfare.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Faunalytics",
@@ -61,7 +61,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Exploring Gen Z's Attitudes Towards Animals And The Environment.pdf",
+    "source": "../pdfs/Exploring Gen Z's Attitudes Towards Animals And The Environment.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Faunalytics",
@@ -73,7 +73,7 @@
   },
   {
     "type": "pdf",
-    "source": "pdfs/Chickens-and-Fishes-China.pdf",
+    "source": "../pdfs/Chickens-and-Fishes-China.pdf",
     "namespace": "animal_policies",
     "meta": {
       "organization": "Faunalytics, Mercy for Animals",

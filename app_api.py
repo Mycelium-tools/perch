@@ -20,8 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
 import json
-from app.src.query import retrieval_chain  # retrieval chain from RAG pipeline
-from app.src.query import llm  # NOTE: llm is imported but not used in the active endpoint;
+from app.src.rag.query import retrieval_chain  # retrieval chain from RAG pipeline
+from app.src.rag.query import llm  # NOTE: llm is imported but not used in the active endpoint;
                                 # it is only referenced in the commented-out history version below
 
 

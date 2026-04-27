@@ -9,6 +9,7 @@ langchain-classic
 langchain-core
 langchain-openai
 langchain-text-splitters
+langchain-community
 pypdf
 pdfplumber
 requests 

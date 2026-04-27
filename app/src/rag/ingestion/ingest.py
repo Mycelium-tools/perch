@@ -14,21 +14,15 @@
 
 import os
 import json
-import hashlib
 import time
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
-from datetime import datetime
-import requests
-from bs4 import BeautifulSoup
-from markdownify import markdownify as md
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
-from concurrent.futures import ThreadPoolExecutor
 
 # Local utility imports
 from chunking_utils import splitter, build_chunk_metadata_validated
@@ -102,7 +96,7 @@ def fetch_metadata_batched(idx, candidate_ids, namespace, batch_size=30):
             if "414" in str(e):
                 print(f"⚠️ Batch size {batch_size} still too large, retrying smaller...")
                 # Recursive fallback if IDs are exceptionally long
-                return fetch_metadata_safely(idx, candidate_ids, namespace, batch_size=10)
+                return fetch_metadata_batched(idx, candidate_ids, namespace, batch_size=10)
             raise e
             
     return all_fetched

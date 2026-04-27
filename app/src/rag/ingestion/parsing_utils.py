@@ -1,5 +1,4 @@
 # utils/parsing.py
-import re
 import pdfplumber
 import fitz # pymupdf
 from langchain_text_splitters import MarkdownHeaderTextSplitter
