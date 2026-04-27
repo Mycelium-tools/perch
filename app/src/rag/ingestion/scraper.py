@@ -6,18 +6,18 @@ from concurrent.futures import ThreadPoolExecutor
 from playwright.sync_api import sync_playwright
 from markdownify import markdownify as md
 
-# Domains known to use SPA (and therefore require headless browser)
-SPA_DOMAINS = {
-    "thehumaneleague.org"
-}
-
 class WebScraper:
     """
     WebScraper supports:
     1. scrape(url)          -> fetch and extract a single page (Markdown)
     2. crawl_and_scrape()   -> BFS crawl starting from seed(s)
     """
+    # Domains known to use SPA (and therefore require headless browser)
+    SPA_DOMAINS = {
+        "thehumaneleague.org"
+    }
 
+    # Internal blacklist of paths to skip
     INTERNAL_BLACKLIST = [
         '/login', '/cart', '/my-account', '/checkout', '/wp-admin',
         '/category/', '/tag/', '/author/', '?share=', 'feed/', '/comments/'
@@ -30,6 +30,12 @@ class WebScraper:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/122.0.0.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         })
+        # Placeholder for resource cleanup logic
+        self.playwright = None
+        self.browser = None
+
+    def __enter__(self):
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
@@ -37,6 +43,15 @@ class WebScraper:
     # -------------------
     # Helper Methods
     # -------------------
+    def _get_scraping_mode(self, url):
+        """Returns True if the URL domain requires SPA handling."""
+        try:
+            domain = urlparse(url).netloc
+            clean_domain = domain.replace("www.", "")
+            return clean_domain in self.SPA_DOMAINS
+        except Exception:
+            return False
+
     def _is_valid(self, url, seed_url, visited):
         """Check domain match and filter blacklisted paths."""
         try:
@@ -73,25 +88,25 @@ class WebScraper:
         for noise in soup.select('header, footer, nav, script, style, aside, .admin-bar'):
             noise.decompose()
 
-        # Containers
         containers = soup.select(container_selector) if container_selector else []
         if not containers:
             containers = [soup.find('main') or soup.find('article') or soup.body]
 
         all_texts, links = [], set()
         for container in containers:
+            if not container: continue
             all_texts.append(str(container))
             for a in container.find_all('a', href=True):
                 full_url = urljoin(url, a['href']).split('#')[0].rstrip('/')
                 if self._is_valid(full_url, seed_url, visited):
                     links.add(full_url)
 
-        # Convert combined HTML to Markdown
         combined_html = "\n".join(all_texts)
         markdown_text = md(combined_html)
         cleaned_markdown = "\n".join(line.rstrip() for line in markdown_text.split('\n') if line.strip())
 
-        title = (soup.title.string or url).strip()
+        title = (soup.title.string if soup.title else url).strip()
+        print(f"   Found Page Title: {title}")
         return {"url": url, "title": title, "markdown": cleaned_markdown}, links
 
     # -------------------
@@ -133,25 +148,24 @@ class WebScraper:
         for depth in range(max_depth + 1):
             if max_depth > 0:
                 print(f"🌐 Depth {depth}: Exploring {len(current_layer)} pages...")
+            
             next_layer = set()
             is_seed_layer = (depth == 0)
 
             with ThreadPoolExecutor(max_workers=self.max_threads) as executor:
-                use_js = get_scraping_mode(target_url) or is_seed_layer # JS for seed only, unless the domain is known to use SPA
-                futures = [
-                    executor.submit(
-                        self.scrape,
-                        u,
-                        container_selector=container_selector,
-                        use_js=use_js
-                    )
-                    for u in current_layer
-                ]
+                futures = []
+                for u in current_layer:
+                    # Use JS for seed URLs when scraping, and for any domain known to use SPA
+                    use_js = self._get_scraping_mode(u) or is_seed_layer
+                    futures.append(executor.submit(
+                        self.scrape, u, container_selector, use_js
+                    ))
 
                 for f in futures:
                     result, found_links = f.result()
-                    next_layer.update(found_links)
-                    visited.update(found_links)
+                    if found_links:
+                        next_layer.update(found_links)
+                        visited.update(found_links)
 
                     if result:
                         if is_seed_layer and skip_ingesting_seed:
@@ -176,5 +190,4 @@ class WebScraper:
                 self.playwright.stop()
             print("   ✅ Scraper resources released.")
         except Exception:
-            # Silence errors during shutdown to prevent 'Double Crashes'
             pass

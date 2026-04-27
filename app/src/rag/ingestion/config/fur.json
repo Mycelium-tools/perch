@@ -1,7 +1,7 @@
 [
   {
     "type": "pdf",
-    "source": "sources/fur/animals-15-03158-v2.pdf",
+    "source": "../pdfs/animals-15-03158-v2.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Messaging Impacts Public Perspectives Towards Fur Farming in the Northeastern United States",
@@ -14,7 +14,7 @@
   },
   {
     "type": "pdf",
-    "source": "sources/carriage_horse_heat_2019.pdf",
+    "source": "../pdfs/carriage_horse_heat_2019.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Rental Horse Licensing and Protection Law",
@@ -28,7 +28,7 @@
   },
   {
     "type": "pdf",
-    "source": "sources/Industry Costs For Chicken, Egg, And Fish Products In The United States, Brazil, And China.pdf",
+    "source": "../pdfs/Industry Costs For Chicken, Egg, And Fish Products In The United States, Brazil, And China.pdf",
     "namespace": "animal_policies",
     "meta": {
       "url": "https://osf.io/e8p93/files/2rb49",
@@ -41,7 +41,7 @@
   },
   {
     "type": "pdf",
-    "source": "sources/Report - Research and Data Phase II - China and Southeast Asia.pdf",
+    "source": "../pdfs/Report - Research and Data Phase II - China and Southeast Asia.pdf",
     "namespace": "animal_policies",
     "meta": {
       "url": "https://osf.io/5w6tu/files/nt56h",
@@ -54,7 +54,7 @@
   },
   {
     "type": "pdf",
-    "source": "sources/Chinese Consumers' Attitudes Toward Animal Welfare.pdf",
+    "source": "../pdfs/Chinese Consumers' Attitudes Toward Animal Welfare.pdf",
     "namespace": "animal_policies",
     "meta": {
       "url": "https://osf.io/vw6hd/files/nxep2",
@@ -67,7 +67,7 @@
   },
   {
     "type": "pdf",
-    "source": "sources/Exploring Gen Z's Attitudes Towards Animals And The Environment.pdf",
+    "source": "../pdfs/Exploring Gen Z's Attitudes Towards Animals And The Environment.pdf",
     "namespace": "animal_policies",
     "meta": {
       "url": "https://osf.io/fk53c/files/b5gu6",
@@ -80,7 +80,7 @@
   },
   {
     "type": "pdf",
-    "source": "sources/Chickens-and-Fishes-China.pdf",
+    "source": "../pdfs/Chickens-and-Fishes-China.pdf",
     "namespace": "animal_policies",
     "meta": {
       "name": "Beliefs About Fishes and Chickens & Their Relation to Animal-Positive Behaviors in China",

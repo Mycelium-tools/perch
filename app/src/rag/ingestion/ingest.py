@@ -275,17 +275,21 @@ def ingest_web(entry):
                 current_url = page.get('url')
                 markdown_text = page['markdown']
                 page_title = page.get('title', 'Untitled')
-                
+                # Add page title as the document name in the metadata
+                existing_meta = entry.get('meta', {})
+                updated_meta = {
+                    "name": existing_meta.get("name", page_title),
+                    "url": current_url,
+                    **existing_meta 
+                }
+
                 if not markdown_text:
                     continue
 
                 # STEP 3: Create Document object
                 doc = Document(
                     page_content=markdown_text,
-                    metadata={
-                        "source": current_url, 
-                        "title": page_title.strip() if page_title else ""
-                    }
+                    metadata=updated_meta
                 )
                 
                 # STEP 4: Split into chunks
@@ -295,7 +299,7 @@ def ingest_web(entry):
                         file_path_or_url=current_url,
                         chunk_index=i,
                         chunk=chunk,
-                        meta={**entry.get('meta', {}), "url": current_url}
+                        meta=updated_meta
                     )
                     chunk.metadata.update(chunk_meta)
                     chunk.id = chunk_meta["chunk_id"]
