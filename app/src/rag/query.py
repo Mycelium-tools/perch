@@ -1,35 +1,26 @@
 # query.py
 #
-# RAG query pipeline for Perch.
-#
-# This module builds and exports `retrieval_chain`, the main LangChain chain
-# used to answer user questions. When invoked with {"input": <question>}, it:
-#   1. Embeds the question using the multilingual-e5-large model
-#   2. Retrieves the top-k most similar document chunks from Pinecone
-#   3. Passes the retrieved chunks + question to Gemini via custom_prompt
-#   4. Returns {"answer": <str>, "context": <list of Documents>}
-#
-# `retrieval_chain` and `llm` are imported by app_api.py at startup.
-# The Pinecone index ("policy-docs") and namespace ("horse_carriage") must
-# already exist and be populated before this module is imported.
+# RAG query pipeline for Perch. 
+# 
+# It uses a custom PineconeRetriever to retrieve the most relevant documents from the Pinecone index.
+# It then uses the custom_prompt to pass the retrieved documents and the user's question to the LLM.
+# It returns the answer and the retrieved documents. 
+# It also uses the history_aware_retriever to pass the chat history to the LLM.
 
 from dotenv import load_dotenv
 load_dotenv()
 
 import os
-import time  # only used in commented-out debug code below
-
 from pinecone import Pinecone
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from langchain_classic.chains.retrieval import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_classic.chains import create_history_aware_retriever
-from langchain_classic import hub
-from langchain_classic.chains.query_constructor.base import AttributeInfo
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate, MessagesPlaceholder
+from .retriever import PineconeRetriever
 
-system_prompt = (
+perch_system_prompt = (
     """
     CONTEXT FROM DOCUMENTS: {context}
 
@@ -46,18 +37,30 @@ system_prompt = (
 """
 )
 
-# Custom prompt passed to the LLM.
-# 1. Use ChatPromptTemplate for better GPT-5 instruction following.
-# 2. Use .strip() or left-aligned text to avoid passing "tab" spaces to the LLM.
 
-
+# Custom prompt passed to the LLM to pass the retrieved documents and the user's question to the LLM.
 # input_variables must match the keys the chain injects:
 #   - {context}: the retrieved document chunks, formatted as a single string by create_stuff_documents_chain
 #   - {input}: the user's question, passed directly from retrieval_chain.invoke({"input": ...})
-custom_prompt = ChatPromptTemplate.from_messages([
-    ("system", system_prompt.strip()),
+perch_custom_prompt = ChatPromptTemplate.from_messages([
+    ("system", perch_system_prompt.strip()),
     MessagesPlaceholder(variable_name="chat_history"),
     ("human", "{input}" ),
+])
+
+# System prompt for contextualizing the user's question to ensure the retriever is aware of chat history
+contextualize_q_system_prompt = (
+    """
+    Given the chat history and the latest user question which might reference previous context, 
+    formulate a standalone question that can be understood without the chat history. 
+    If the user's statement is a personal fact or irrelevant to animal advocacy, return an empty 
+    string or a 'no-op' keyword to prevent unrelated retrieval.
+    """
+)
+contextualize_q_prompt = ChatPromptTemplate.from_messages([
+    ("system", contextualize_q_system_prompt),
+    MessagesPlaceholder("chat_history"),
+    ("human", "{input}"),
 ])
 
 # Pinecone config — must match what was used at ingest time.
@@ -83,13 +86,11 @@ docsearch = PineconeVectorStore(
     namespace=namespace
 )
 
-# Pulls the standard retrieval-QA prompt from LangChain Hub.
-# NOTE: this prompt is never actually used — custom_prompt is passed to the chain instead.
-# Safe to remove if custom_prompt is the intended prompt.
-retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
-
-# Wrap the vector store as a LangChain retriever.
-# retriever = docsearch.as_retriever()
+# Format documents into a string containing source name and URL that the LLM can easily parse
+document_prompt = PromptTemplate(
+    input_variables=["page_content", "source_name", "source_url"],
+    template="--- SOURCE: {source_name} ---\nURL: {source_url}\nCONTENT: {page_content}\n"
+)
 
 # OpenAI LLM setup
 # Use gpt-5-mini as the base model
@@ -100,43 +101,21 @@ llm = ChatOpenAI(
     streaming=True,  # enable token-by-token streaming for /ask/stream endpoint
 )
 
-# Format documents into a string containing source name and URL that the LLM can easily parse
-document_prompt = PromptTemplate(
-    input_variables=["page_content", "source_name", "source_url"],
-    template="--- SOURCE: {source_name} ---\nURL: {source_url}\nCONTENT: {page_content}\n"
-)
-
 # create_stuff_documents_chain: combines retrieved Document chunks into a single
 # context string, then calls the LLM with custom_prompt.
 combine_docs_chain = create_stuff_documents_chain(
     llm, 
-    custom_prompt,
+    perch_custom_prompt,
     document_variable_name="context", 
     document_prompt=document_prompt
 )
 
-# Optionally filter retrieved chunks by similarity score (0–1).
 # Score threshold of 0.85 means only chunks with cosine similarity >= 0.85 are returned.
-retriever = docsearch.as_retriever(search_kwargs={
-    "score_threshold": 0.85
-})
+doc_retriever = PineconeRetriever(pinecone_vector_store=docsearch, score_threshold=0.85, top_k=5)
 
-# Ensure conversations have chat history saved and the retriever is aware of history
-contextualize_q_system_prompt = (
-    """
-    Given the chat history and the latest user question which might reference previous context, 
-    formulate a standalone question that can be understood without the chat history. 
-    If the user's statement is a personal fact or irrelevant to animal advocacy, return an empty 
-    string or a 'no-op' keyword to prevent unrelated retrieval.
-    """
-)
-contextualize_q_prompt = ChatPromptTemplate.from_messages([
-    ("system", contextualize_q_system_prompt),
-    MessagesPlaceholder("chat_history"),
-    ("human", "{input}"),
-])
+# History-aware retriever: ensures conversations have chat history saved and the retriever is aware of history
 history_aware_retriever = create_history_aware_retriever(
-    llm, retriever, contextualize_q_prompt
+    llm, doc_retriever, contextualize_q_prompt
 )
 
 # create_retrieval_chain: wraps the retriever + combine_docs_chain into one pipeline.

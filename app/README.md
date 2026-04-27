@@ -35,6 +35,7 @@ Create your .env file (loaded by python dotenv)
 ```
 OPENAI_API_KEY=
 PINECONE_API_KEY=
+CO_API_KEY=
 PINECONE_CLOUD= # Optional
 PINECONE_REGION = # Optional
 ```
