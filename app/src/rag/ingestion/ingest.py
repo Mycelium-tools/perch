@@ -221,7 +221,7 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
 
 def ingest_pdf(entry, json_dir=None):
     """
-    Ingest a single PDF from a data_sources.json entry.
+    Ingest a single PDF from a JSON entry.
     """
     file_path = entry.get('source')
     
@@ -329,17 +329,21 @@ def ingest_web(entry):
                 current_url = page.get('url')
                 markdown_text = page['markdown']
                 page_title = page.get('title', 'Untitled')
-                
+                # Add page title as the document name in the metadata
+                existing_meta = entry.get('meta', {})
+                updated_meta = {
+                    "name": existing_meta.get("name", page_title),
+                    "url": current_url,
+                    **existing_meta 
+                }
+
                 if not markdown_text:
                     continue
 
                 # STEP 3: Create Document object
                 doc = Document(
                     page_content=markdown_text,
-                    metadata={
-                        "source": current_url, 
-                        "title": page_title.strip() if page_title else ""
-                    }
+                    metadata=updated_meta
                 )
                 
                 # STEP 4: Split into chunks
@@ -349,7 +353,7 @@ def ingest_web(entry):
                         file_path_or_url=current_url,
                         chunk_index=i,
                         chunk=chunk,
-                        meta={**entry.get('meta', {}), "url": current_url}
+                        meta=updated_meta
                     )
                     chunk.metadata.update(chunk_meta)
                     chunk.id = chunk_meta["chunk_id"]
@@ -421,6 +425,23 @@ def run_ingestion_from_json(json_path_str):
     print(f"   Total: {pdf_count + url_count} sources")
     print(f"{'='*70}")
 
+def run_ingestion_from_directory(config_dir_str):
+    """Iterates through all JSON files in the specified directory."""
+    config_dir = Path(config_dir_str).resolve()
+    
+    if not config_dir.is_dir():
+        print(f"❌ Config directory not found: {config_dir}")
+        return
+
+    json_files = list(config_dir.glob("*.json"))
+    if not json_files:
+        print(f"⚠️ No JSON files found in {config_dir}")
+        return
+
+    print(f"📂 Found {len(json_files)} config files in {config_dir}")
+    for json_file in json_files:
+        print(f"\n📖 Processing config: {json_file.name}")
+        run_ingestion_from_json(str(json_file))
 # ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
@@ -429,17 +450,22 @@ if __name__ == "__main__":
     # Get JSON file from command-line argument or use default
     if len(sys.argv) > 1:
         json_file = sys.argv[1]
+    
+        # Resolve to absolute path
+        json_path = Path(json_file).resolve()
+        
+        print(f"{'='*70}")
+        print(f"🚀 Starting Batch Ingestion to Pinecone from {json_path}")
+        print(f"{'='*70}")
+        
+        run_ingestion_from_json(str(json_path))
     else:
         # Default to data_sources.json in script directory
-        current_file = Path(__file__).resolve()
-        rag_dir = current_file.parent
-        json_file = str(rag_dir / "data_sources.json")
-    
-    # Resolve to absolute path
-    json_path = Path(json_file).resolve()
-    
-    print(f"{'='*70}")
-    print(f"🚀 Starting Batch Ingestion to Pinecone from {json_path}")
-    print(f"{'='*70}")
-    
-    run_ingestion_from_json(str(json_path))
+        script_dir = Path(__file__).resolve().parent
+        default_config_dir = script_dir / "config"
+        
+        print(f"{'='*70}")
+        print(f"🚀 Batch Ingesting from directory: {default_config_dir}")
+        print(f"{'='*70}")
+        
+        run_ingestion_from_directory(str(default_config_dir))
