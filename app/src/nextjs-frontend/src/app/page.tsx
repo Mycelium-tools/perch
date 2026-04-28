@@ -3,6 +3,7 @@
 import { FolderSearch, PencilLine, FileText, Workflow, Gavel, Users, CalendarClock, ChartLine, ArrowUp, Copy } from "lucide-react";
 import { FormEvent, JSX } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from 'remark-gfm';
 import { useState, useRef, useEffect } from "react";
 import BirdLoader from "../components/BirdLoader";
 import { useChat } from "../components/ClientLayout";
@@ -284,14 +285,44 @@ export default function Home() {
                           {(() => {
                             console.log('Raw answer:', msg.answer);
                             return (                              
-                              <ReactMarkdown components={{
-                              h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 text-gray-900" {...props} />,
-                              h2: ({node, ...props}) => <h2 className="text-2xl font-bold mt-6 mb-3 text-gray-800" {...props} />,
-                              p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-700" {...props} />,
-                              ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4 space-y-1" {...props} />,
-                              ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1" {...props} />,
-                              li: ({node, ...props}) => <li className="mb-1" {...props} />,
-                              strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}
+                              components={{
+                                blockquote: ({node, ...props}) => (
+                                  <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4 text-gray-600" {...props} />
+                                ),
+                                // --- TABLE FIXES ---
+                                table: ({node, ...props}) => (
+                                  <div className="my-6 overflow-x-auto rounded-lg border border-gray-200">
+                                    <table className="min-w-full divide-y divide-gray-200" {...props} />
+                                  </div>
+                                ),
+                                thead: ({node, ...props}) => <thead className="bg-gray-50" {...props} />,
+                                th: ({node, ...props}) => (
+                                  <th 
+                                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-900 !text-left" 
+                                    {...props} 
+                                  />
+                                ),
+                                td: ({node, ...props}) => (
+                                  <td 
+                                    className="whitespace-normal px-4 py-3 text-sm text-gray-700 border-t border-gray-200 !text-left" 
+                                    {...props} 
+                                  />
+                                ),
+                                // -------------------
+                                
+                                // --- HEADER HIERARCHY ---
+                                h1: ({node, ...props}) => <h1 className="text-3xl font-bold mt-8 mb-4 text-gray-900" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="text-2xl font-bold mt-6 mb-3 text-gray-800 border-b pb-2" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-5 mb-2 text-gray-800" {...props} />,
+                                h4: ({node, ...props}) => <h4 className="text-lg font-medium mt-4 mb-1 text-gray-700 italic" {...props} />,
+                                
+                                // --- CONTENT STYLING ---
+                                p: ({node, ...props}) => <p className="mb-4 leading-relaxed text-gray-700" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc list-inside mb-4 ml-4 space-y-1" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1" {...props} />,
+                                li: ({node, ...props}) => <li className="mb-1 [&>p]:inline" {...props} />,
+                                strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
                               }}>
                               {msg.answer}
 

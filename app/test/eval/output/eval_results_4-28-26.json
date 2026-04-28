@@ -1,0 +1,6 @@
+[
+  {
+    "query": "Propose three different ways to frame a 'Vegan Monday' initiative to a university administration that currently prioritizes low-cost meal plans. How should the messaging change when presenting to the Student Government Association versus the Director of Dining Services?",
+    "scores": "Source Specificity: 2\nJustification: The response names organizations and years (e.g., WRI, 2022; Greener by Default, 2023; The Humane League, 2023) which is more specific than vague claims, but it does not provide full document titles, authors, or direct references.\n\nActionability: 3\nJustification: The plan contains multiple concrete, ready-to-use actions (pilot design, KPIs like 10% participation and \u22640\u20132% per-meal cost change, timelines, tracking protocols) that a team could implement immediately.\n\nAdvocacy Context: 3\nJustification: The response explicitly addresses political, financial, cultural, and operational barriers and offers mitigation tactics, tailoring messaging and asks separately for SGA and Dining Services.\n\nEvidence Base: 2\nJustification: Claims are supported by cited organizations and high-level findings, but the evidence is referenced incompletely (no detailed citations or discussion of study limitations), and uncertainty is only implicitly addressed.\n\nMean Score: 2.50"
+  }
+]
