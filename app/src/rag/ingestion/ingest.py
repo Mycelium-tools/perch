@@ -281,7 +281,7 @@ def ingest_pdf(entry, json_dir=None):
             chunk.id = metadata["chunk_id"]
         
         # For debugging only 
-        # export_chunks_to_json(chunks)
+        export_chunks_to_json(chunks)
 
         # STEP 5: Embed and upsert to Pinecone
         upsert_chunks_batched(chunks, index_name, embeddings, namespace)

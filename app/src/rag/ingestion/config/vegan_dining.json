@@ -142,5 +142,144 @@
       "doc_type": "website",
       "tags": ["plant based diets", "vegan dining", "college", "student advocacy", "dining hall"]
     }
+  },
+  {
+    "type": "web",
+    "source": "https://www.wri.org/research/food-service-playbook-promoting-sustainable-food-choices",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "The Food Service Playbook for Promoting Sustainable Food Choices",
+      "organization": "World Resources Institute",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "report",
+      "publication_date": "2024-05-07",
+      "tags": ["food_service", "behavioral_science", "campus_dining", "implementation"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://www.wri.org/insights/23-behavior-change-strategies-get-diners-eating-more-plant-rich-food",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "23 Behavior Change Strategies to Get Diners Eating More Plant-Rich Food",
+      "organization": "World Resources Institute",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "publication_date": "2020-01-07",
+      "tags": ["behavior_change", "menu_design", "nudges", "plant_rich_dining"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://www.wri.org/update/menu-messaging-increase-sales-climate-friendly-food",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Changes to Menu Messaging Can Increase Sales of Climate-Friendly Food",
+      "organization": "World Resources Institute",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "publication_date": "2022-02-01",
+      "tags": ["messaging", "menu_labels", "climate_friendly_food", "campus_dining"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://www.wri.org/research/identifying-cool-food-meals",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Identifying Cool Food Meals",
+      "organization": "World Resources Institute",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "doc_type": "report",
+      "publication_date": "2022-06-27",
+      "tags": ["measurement", "carbon_impact", "food_service_metrics", "menu_assessment"]
+    }
+  },
+  {
+    "type": "web",
+    "source": [
+      "https://stars.aashe.org/resources-support/help-center/v3-operations/dining-service-procurement/",
+      "https://stars.aashe.org/resources-support/help-center/v2-operations/sustainable-dining/"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "AASHE STARS Dining and Procurement Standards",
+      "organization": "AASHE",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "website",
+      "publication_date": "2024-01-01",
+      "tags": ["campus_policy", "procurement", "benchmarking", "plant_based_procurement"]
+    }
+  },
+  {
+    "type": "web",
+    "source": [
+      "https://www.rfchallenge.org/real-food-standards-30",
+      "https://www.rfchallenge.org/calculator"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Real Food Challenge Standards and Calculator",
+      "organization": "Real Food Challenge",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "website",
+      "publication_date": "2024-01-01",
+      "tags": ["student_led_audits", "campus_procurement", "organizing_tool", "standards"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://www.ucop.edu/sustainability/policy-areas/sustainable-foodservice/index.html",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "UC Sustainable Foodservice Policy Goals",
+      "organization": "University of California Office of the President",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "website",
+      "publication_date": "2024-01-01",
+      "tags": ["system_level_policy", "plant_based_targets", "procurement_goals", "university_governance"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://www.greenerbydefault.com/",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Greener by Default",
+      "organization": "Greener by Default",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "doc_type": "website",
+      "publication_date": "2024-01-01",
+      "tags": ["default_veg", "implementation", "institutional_dining", "choice_architecture"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8000212/",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Food Choice and Waste in University Dining Commons: A Menus of Change University Research Collaborative Study",
+      "organization": "Foods (MDPI)",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "doc_type": "academic_paper",
+      "publication_date": "2021-03-10",
+      "tags": ["university_dining", "food_waste", "student_behavior", "peer_reviewed"]
+    }
+  },
+  {
+    "type": "web",
+    "source": [
+      "https://www.betterfoodfoundation.org/defaultveg-campus-programs/",
+      "https://www.betterfoodfoundation.org/initiatives/plant-based-defaults/"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "DefaultVeg Campus Programs",
+      "organization": "Better Food Foundation",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "website",
+      "publication_date": "2024-01-01",
+      "tags": ["default_veg", "campus_programs", "implementation_guidance", "behavior_change"]
+    }
   }
 ]
