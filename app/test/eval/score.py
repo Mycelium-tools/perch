@@ -22,10 +22,12 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 
 # Configuration
-INPUT_FILE = 'eval_input_4_28_26.json'
+EVAL_ID = "4-28-26" # use eval date as its ID
+INPUT_DIR = 'input/'
+INPUT_FILE = INPUT_DIR + f'eval_input_{EVAL_ID}.json'
 OUTPUT_DIR = 'output/'
-EVAL_RESULTS_FILE = os.path.join(OUTPUT_DIR, 'eval_results_4_28_26.json')
-PARSED_CSV_FILE = os.path.join(OUTPUT_DIR, 'parsed_results_4_28_26.csv')
+EVAL_RESULTS_FILE = os.path.join(OUTPUT_DIR, f'eval_results_{EVAL_ID}.json')
+PARSED_CSV_FILE = os.path.join(OUTPUT_DIR, f'parsed_results_{EVAL_ID}.csv')
 
 RUBRIC_PROMPT = """
    You are evaluating responses from an AI system designed to help animal advocacy organizations.
