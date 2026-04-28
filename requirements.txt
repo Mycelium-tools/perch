@@ -10,7 +10,6 @@ langchain-core
 langchain-openai
 langchain-text-splitters
 langchain-community
-pypdf
 pdfplumber
 requests 
 beautifulsoup4
@@ -19,3 +18,4 @@ lxml
 playwright
 pymupdf
 cohere
+pandas

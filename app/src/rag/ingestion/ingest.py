@@ -16,12 +16,13 @@ import os
 import json
 import time
 import sys
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.documents import Document
 
 # Local utility imports
@@ -78,6 +79,53 @@ else:
 idx = pc.Index(index_name)
 
 # ============================================================================
+# Doc cleaning to remove unnecssary whitespace
+# ============================================================================
+def clean_docs(docs):
+    """
+    Aggressively cleans PDF artifacts, invisible characters, 
+    and excessive whitespace from LangChain documents.
+    """
+    for doc in docs:
+        # 1. Strip invisible/control characters (Zero Width Space, Form Feed, etc.)
+        text = doc.page_content.replace('\u200b', '').replace('\x0c', '')
+        
+        # 2. Standardize horizontal whitespace (Tabs, Non-breaking spaces -> Space)
+        text = text.replace('\xa0', ' ').replace('\t', ' ')
+        
+        # 3. Collapse vertical stacks (e.g., '\n \n \n') into a double newline
+        # This handles the "Space Trap" where spaces sit between newlines
+        text = re.sub(r'(\s*\n\s*){2,}', '\n\n', text)
+        
+        # 4. Collapse multiple horizontal spaces into a single space
+        text = re.sub(r' {2,}', ' ', text)
+        
+        # 5. Final strip to clear leading/trailing noise from the document
+        doc.page_content = text.strip()
+        
+    return docs
+
+def export_chunks_to_json(chunks, filename="chunk_context_audit.json"):
+    """
+    Exports LangChain Document objects to a readable JSON format for debugging.
+    """
+    output_data = []
+    
+    for chunk in chunks:
+        output_data.append({
+            "chunk_id": chunk.metadata.get("chunk_id"),
+            "section": chunk.metadata.get("section", "Unknown"),
+            "source": chunk.metadata.get("source"),
+            "content_length": len(chunk.page_content),
+            "full_content": chunk.page_content
+        })
+    
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, indent=4, ensure_ascii=False)
+    
+    print(f"✅ Exported {len(output_data)} chunks to {filename}")
+
+# ============================================================================
 # HELPER FUNCTIONS - Rate-Limited Upsertion
 # ============================================================================
 def fetch_metadata_batched(idx, candidate_ids, namespace, batch_size=30):
@@ -129,8 +177,7 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
     # Metadata for logging
     first_chunk_meta = chunks[0].metadata
     name = first_chunk_meta.get('source_name', 'N/A')
-
-    snippet = chunks[0].page_content[:100]
+    snippet = chunks[0].page_content[:50]
     print(f"   📄 Snippet: {snippet}...")
     if not new_chunks:
         print(f"   ⏩ [SKIPPING INGESTION]: All {len(chunks)} chunks in this batch already exist for '{name}'.")    
@@ -196,8 +243,8 @@ def ingest_pdf(entry, json_dir=None):
     try:
         # STEP 1: Load PDF
         print(f"📖 Loading PDF...")
-        loader = PyPDFLoader(str(full_path))
-        docs = loader.load()
+        loader = PyMuPDFLoader(str(full_path))
+        docs = clean_docs(loader.load())
         print(f"✅ Loaded {len(docs)} pages")
 
         # STEP 2: Extract section headers
@@ -209,12 +256,14 @@ def ingest_pdf(entry, json_dir=None):
         print(f"✂️  Splitting into chunks...")
         chunks = splitter.split_documents(docs)
         print(f"✅ Created {len(chunks)} chunks")
+        # Filter out garbage chunks (e.g., fewer than 10 characters)
+        chunks = [c for c in chunks if len(c.page_content.strip()) > 10]
         
         # STEP 4: Add metadata to each chunk
         print(f"🏷️  Adding metadata...")
         for i, chunk in enumerate(chunks):
             current_page = chunk.metadata.get('page', 0)
-            section_title = next(
+            section = next(
                 (h['text'] for h in reversed(headings) if h['page'] <= current_page),
                 "General"
             )
@@ -224,10 +273,13 @@ def ingest_pdf(entry, json_dir=None):
                 chunk_index=i,
                 chunk=chunk,
                 meta=meta,
-                section_title=section_title
+                section=section
             )
             chunk.metadata.update(metadata)
             chunk.id = metadata["chunk_id"]
+        
+        # For debugging only 
+        export_chunks_to_json(chunks)
 
         # STEP 5: Embed and upsert to Pinecone
         upsert_chunks_batched(chunks, index_name, embeddings, namespace)
