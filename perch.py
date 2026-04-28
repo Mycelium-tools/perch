@@ -1,3 +1,8 @@
+# perch.py
+#
+# a CLI interface for querying Perch
+# Usage: python3 perch.py
+
 import sys
 import threading
 import time

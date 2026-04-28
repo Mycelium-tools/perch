@@ -177,8 +177,6 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
     # Metadata for logging
     first_chunk_meta = chunks[0].metadata
     name = first_chunk_meta.get('source_name', 'N/A')
-    hash = first_chunk_meta.get('source_hash', 'n/a')
-    # print(f"source hash {hash}")
     snippet = chunks[0].page_content[:50]
     print(f"   📄 Snippet: {snippet}...")
     if not new_chunks:
