@@ -1,0 +1,762 @@
+[
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/btTeBHKGkmRyD5sFK/open-phil-should-allocate-most-neartermist-funding-to-animal",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Open Phil Should Allocate Most Neartermist Funding to Animal Welfare",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-11-19",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/8xNSiwj5gjoDTRquQ/announcing-the-publication-of-animal-liberation-now",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Announcing the Publication of Animal Liberation Now",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-05-19",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/GCaRhu84NuCdBiRz8/ea-s-success-no-one-cares-about",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "EA\u2019s success no one cares about",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-06-24",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/2oBKh3eJj8uDJzsoA/no-injuries-were-reported",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "No injuries were reported",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-02-14",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/snnfmepzrwpAsAoDT/why-anima-international-suspended-the-campaign-to-end-live",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Why Anima International suspended the campaign to end live fish sales in Poland",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2022-12-30",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/tnSg6o7crcHFLc395/the-welfare-range-table",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "The Welfare Range Table",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2022-11-07",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/8P2GZFLnv8HW9ozLB/ea-wins-2023",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "EA Wins 2023",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-12-31",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/rXYW9GPsmwZYu3doX/what-happens-on-the-average-day",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "What happens on the average day?",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2022-08-17",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/wCcWyqyvYgF3ozNnS/frog-welfare",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Frog Welfare",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2025-08-05",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/Qk3hd6PrFManj8K6o/rethink-priorities-welfare-range-estimates",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Rethink Priorities\u2019 Welfare Range Estimates",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-01-23",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/2oBKh3eJj8uDJzsoA/no-injuries-were-reported",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "No injuries were reported",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2023-02-14",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/snnfmepzrwpAsAoDT/why-anima-international-suspended-the-campaign-to-end-live",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Why Anima International suspended the campaign to end live fish sales in Poland",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2022-12-30",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/tnSg6o7crcHFLc395/the-welfare-range-table",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "The Welfare Range Table",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2022-11-07",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/rXYW9GPsmwZYu3doX/what-happens-on-the-average-day",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "What happens on the average day?",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2022-08-17",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/FxZdQJXs45fTFnMEe/ea-is-underfunding-animal-advocacy-according-to-our-own",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "EA is underfunding animal advocacy according to our own preferences",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2026-01-13",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/XjQr52eDkBPLrLHB3/my-ted-talk-how-to-end-factory-farming",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "My TED Talk: How to end factory farming",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2025-09-05",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/qjGcsKg5qd4mi99jz/us-supreme-court-upholds-prop-12",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "US Supreme Court Upholds Prop 12!",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2023-05-11",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/HDFxQwMwPp275J87r/net-global-welfare-may-be-negative-and-declining-1",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Net global welfare may be negative and declining",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2023-09-26",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/YZNswjspTd2MYAaDf/growing-the-us-tofu-market-a-roadmap-1",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Growing the US tofu market - a roadmap",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2022-10-20",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/5iCsbrSqLyrfP55ry/concerns-with-ace-s-recent-behavior-1",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Concerns with ACE's Recent Behavior",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "farmed_animals",
+      "doc_type": "forum",
+      "publication_date": "2021-04-17",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "farmed_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/saEQXBgzmDbob9GdH/why-i-no-longer-prioritize-wild-animal-welfare",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Why I No Longer Prioritize Wild Animal Welfare",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2023-02-15",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/2YjqfYktNGcx6YNRy/if-wild-animal-welfare-is-intractable-everything-is",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "If\u00a0wild animal welfare is intractable, everything is intractable.",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2025-11-14",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/35bfnGmsyrZkEnkLJ/steering-ai-to-care-for-animals-and-soon",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Steering AI to care for animals, and soon",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2022-06-14",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/uko8rxrcmYB54ZnBH/new-donation-opportunity-the-center-for-wild-animal-welfare",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "New donation opportunity: the Center for Wild Animal Welfare",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2025-11-18",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/bT3WrFn6H4fpvLSk8/policy-advocacy-for-eradicating-screwworm-looks-remarkably",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Policy advocacy for eradicating screwworm looks remarkably cost-effective",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2024-05-20",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/Buongkf4KXmBP2jiG/announcing-wildanimalsuffering-org-a-new-resource-launched",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Announcing WildAnimalSuffering.org, a new resource launched for the cause",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2022-12-12",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/idhTjyNTsyxobijyJ/wild-animal-initiative-has-urgent-need-for-more-funding-and",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Wild Animal Initiative has urgent need for more funding and more donors",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2024-08-06",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/4FncrGhQKcuFthxiR/caring-about-bugs-isn-t-weird",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Caring about Bugs Isn\u2019t Weird",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2025-11-23",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/RZEvk6cBtBg2mpgwS/trigger-warning-violence-animal-vs-human-welfare-sharing",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "[Trigger warning: violence] Animal vs human welfare: sharing some personal reflections",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2024-10-10",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/CZJ93Y7hinjvqt87j/introducing-new-leadership-in-animal-charity-evaluators",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Introducing new leadership in Animal Charity Evaluators\u2019 Research team ",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "wildlife",
+      "doc_type": "forum",
+      "publication_date": "2022-11-17",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "wild_animal_welfare",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/5iCsbrSqLyrfP55ry/concerns-with-ace-s-recent-behavior-1",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Concerns with ACE's Recent Behavior",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2021-04-17",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/dJxNuMsz9FiXXwTMM/animal-rights-initiative-with-far-reaching-consequences-and",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Animal rights initiative with far-reaching consequences and possibly high chance of success",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2022-08-11",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/5XKAsEBMuxiycTHL7/working-with-the-beef-industry-for-chicken-welfare",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Working with the Beef Industry for Chicken Welfare",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2022-12-18",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/6pc8iuDxz8LArWng8/eu-food-agency-recommends-banning-cages",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "EU Food Agency Recommends Banning Cages",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-02-21",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/28znpN6fus9pohNmy/gaslit-by-humanity",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Gaslit by humanity",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2025-07-07",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/5iqTPsrGtz8EYi9r9/how-unofficial-work-gets-you-hired-building-your-surface",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "How Unofficial Work Gets You Hired: Building Your Surface Area for Serendipity",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2025-07-01",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/BX8hPeye2QRcyftRk/3-doubts-about-veganism",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "3 doubts about veganism",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2025-11-26",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/KWpyRXzHn6JMyZiBn/ai-for-animals-2025-bay-area-retrospective",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "AI for Animals 2025 Bay Area Retrospective",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2025-04-05",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/grL3eTkSBjT4EgxSy/a-new-framing-to-replace-welfarism-vs-abolitionism",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "A new framing to replace \"Welfarism vs. Abolitionism\"",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2023-01-26",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://forum-bots.effectivealtruism.org/posts/aSBcRu4h2qH5sRypQ/effective-animal-advocacy-resources",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Effective Animal Advocacy Resources",
+      "organization": "Effective Altruism Forum",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "forum",
+      "publication_date": "2019-10-24",
+      "tags": [
+        "effective_altruism",
+        "animal_advocacy",
+        "effective_animal_advocacy",
+        "top_posts",
+        "api_collected"
+      ]
+    }
+  }
+]

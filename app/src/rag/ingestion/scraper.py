@@ -14,7 +14,8 @@ class WebScraper:
     """
     # Domains known to use SPA (and therefore require headless browser)
     SPA_DOMAINS = {
-        "thehumaneleague.org"
+        "thehumaneleague.org",
+        "effectivealtruism.org"
     }
 
     # Internal blacklist of paths to skip
@@ -48,7 +49,10 @@ class WebScraper:
         try:
             domain = urlparse(url).netloc
             clean_domain = domain.replace("www.", "")
-            return clean_domain in self.SPA_DOMAINS
+            return any(
+                clean_domain == spa_domain or clean_domain.endswith(f".{spa_domain}")
+                for spa_domain in self.SPA_DOMAINS
+            )
         except Exception:
             return False
 
@@ -69,18 +73,31 @@ class WebScraper:
         """Render JS-heavy pages using Playwright."""
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                locale="en-US",
+                viewport={"width": 1366, "height": 768}
+            )
+            page = context.new_page()
             try:
-                page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                page.wait_for_timeout(2000)
+                page.goto(url, wait_until="networkidle", timeout=45000)
+                page.wait_for_timeout(3000)
                 return page.content()
             except Exception as e:
                 print(f"   ⚠️ Playwright error: {e}")
                 return None
             finally:
+                context.close()
                 browser.close()
 
-    def _extract_markdown_and_links(self, html_content, url, seed_url, visited, container_selector=None):
+    def _extract_markdown_and_links(
+        self,
+        html_content,
+        url,
+        seed_url,
+        visited,
+        container_selector=None
+    ):
         """Convert HTML to cleaned Markdown and collect valid links."""
         soup = BeautifulSoup(html_content, 'lxml')
 
@@ -98,13 +115,16 @@ class WebScraper:
             all_texts.append(str(container))
             for a in container.find_all('a', href=True):
                 full_url = urljoin(url, a['href']).split('#')[0].rstrip('/')
-                if self._is_valid(full_url, seed_url, visited):
+                if self._is_valid(
+                    full_url,
+                    seed_url,
+                    visited
+                ):
                     links.add(full_url)
 
         combined_html = "\n".join(all_texts)
         markdown_text = md(combined_html)
         cleaned_markdown = "\n".join(line.rstrip() for line in markdown_text.split('\n') if line.strip())
-
         title = (soup.title.string if soup.title else url).strip()
         print(f"   Found Page Title: {title}")
         return {"url": url, "title": title, "markdown": cleaned_markdown}, links
@@ -129,13 +149,25 @@ class WebScraper:
             if not page_content:
                 return None, set()
 
-            return self._extract_markdown_and_links(page_content, url, url, set(), container_selector)
+            return self._extract_markdown_and_links(
+                page_content,
+                url,
+                url,
+                set(),
+                container_selector
+            )
 
         except Exception as e:
             print(f"   ❌ Scrape failed: {url} -> {e}")
             return None, set()
 
-    def crawl_and_scrape(self, seed_url, max_depth=1, skip_ingesting_seed=False, container_selector=None):
+    def crawl_and_scrape(
+        self,
+        seed_url,
+        max_depth=1,
+        skip_ingesting_seed=False,
+        container_selector=None
+    ):
         """
         BFS crawl starting from seed_url up to max_depth.
         Uses scrape() internally for each page.
@@ -158,7 +190,10 @@ class WebScraper:
                     # Use JS for seed URLs when scraping, and for any domain known to use SPA
                     use_js = self._get_scraping_mode(u) or is_seed_layer
                     futures.append(executor.submit(
-                        self.scrape, u, container_selector, use_js
+                        self.scrape,
+                        u,
+                        container_selector,
+                        use_js
                     ))
 
                 for f in futures:

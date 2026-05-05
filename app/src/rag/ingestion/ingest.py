@@ -107,23 +107,34 @@ def clean_docs(docs):
 
 def export_chunks_to_json(chunks, filename="chunk_context_audit.json"):
     """
-    Exports LangChain Document objects to a readable JSON format for debugging.
+    Appends LangChain Document objects to a single JSON file for debugging.
     """
     output_data = []
-    
+
     for chunk in chunks:
         output_data.append({
             "chunk_id": chunk.metadata.get("chunk_id"),
             "section": chunk.metadata.get("section", "Unknown"),
             "source": chunk.metadata.get("source"),
+            "source_name": chunk.metadata.get("source_name"),
+            "source_url": chunk.metadata.get("source_url"),
             "content_length": len(chunk.page_content),
             "full_content": chunk.page_content
         })
-    
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, indent=4, ensure_ascii=False)
-    
-    print(f"✅ Exported {len(output_data)} chunks to {filename}")
+
+    existing_data = []
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                existing_data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            existing_data = []
+
+    merged_data = existing_data + output_data
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(merged_data, f, indent=2, ensure_ascii=False)
+
+    print(f"✅ Appended {len(output_data)} chunks to {filename} (total: {len(merged_data)})")
 
 # ============================================================================
 # HELPER FUNCTIONS - Rate-Limited Upsertion
@@ -278,7 +289,7 @@ def ingest_pdf(entry, json_dir=None):
             chunk.metadata.update(metadata)
             chunk.id = metadata["chunk_id"]
         
-        # For debugging only 
+        # For debugging only
         export_chunks_to_json(chunks)
 
         # STEP 5: Embed and upsert to Pinecone
@@ -356,6 +367,9 @@ def ingest_web(entry):
                     chunk.metadata.update(chunk_meta)
                     chunk.id = chunk_meta["chunk_id"]
 
+                # For debugging only
+                export_chunks_to_json(chunks)
+
                 # STEP 5: Embed and upsert to Pinecone
                 upsert_chunks_batched(chunks, index_name, embeddings, namespace)
                 total_ingested += 1
@@ -383,6 +397,12 @@ def run_ingestion_from_json(json_path_str):
         json_file_path: Path to data_sources.json (absolute or relative)
     """
     json_path = Path(json_path_str).resolve()
+
+    # Reset debug audit file once at the beginning of a run.
+    debug_file = Path("chunk_context_audit.json").resolve()
+    if debug_file.exists():
+        debug_file.unlink()
+        print(f"🧹 Reset debug chunk file: {debug_file}")
     
     if not json_path.exists():
         print(f"❌ JSON file not found at: {json_path}")
