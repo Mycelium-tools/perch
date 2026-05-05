@@ -337,6 +337,14 @@ export default function Home() {
                                 ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1" {...props} />,
                                 li: ({node, ...props}) => <li className="mb-1 [&>p]:inline" {...props} />,
                                 strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
+                                a: ({node, ...props}) => (
+                                  <a
+                                    className="text-grey-100 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    {...props}
+                                  />
+                                ),
                               }}>
                               {msg.answer}
 
@@ -409,7 +417,12 @@ export default function Home() {
                             );return (
                               <li key={cidx} className="text-sm border-l-4 border-green-500 pl-4 py-1">
                                 {isUrl ? (
-                                  <a href={url} target="_blank" rel="noopener noreferrer">
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                  >
                                     {content}
                                   </a>
                                 ) : (
