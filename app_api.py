@@ -109,9 +109,13 @@ async def ask_question_stream(request: Request):
     async def generate():
         context_docs = []
         full_answer = ""
+        sent_docs_status = False
         async for chunk in retrieval_chain.astream({"input": user_input, "chat_history": history}):
             if "context" in chunk:
                 context_docs = chunk["context"]
+                if context_docs and not sent_docs_status:
+                    yield f"data: {json.dumps({'type': 'status', 'stage': 'docs_retrieved'})}\n\n"
+                    sent_docs_status = True
                 # --- DEBUG LOGGING START ---
                 for i, doc in enumerate(context_docs):
                     name = doc.metadata.get("source_name", "Unknown Name")

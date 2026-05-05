@@ -16,6 +16,7 @@ export default function Home() {
   const [showContext, setShowContext] = useState<number | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const [streamStatus, setStreamStatus] = useState<string>("");
 
   // Sync chatHistory changes back to the active chat
   useEffect(() => {
@@ -138,6 +139,7 @@ export default function Home() {
   const submitQuestion = async (questionText: string) => {
     if (!sessionId) return; // Don't send request until sessionId is set
     setAutoScrollEnabled(true);
+    setStreamStatus("Finding relevant sources...");
 
     if (!activeChatId) {
       // Create a new chat
@@ -187,37 +189,44 @@ export default function Home() {
     const decoder = new TextDecoder();
     let buffer = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const event = JSON.parse(line.slice(6));
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const event = JSON.parse(line.slice(6));
 
-        if (event.type === "text") {
-          // Append each token; replace "Thinking..." on first chunk
-          setChatHistory((prev) => {
-            const updated = [...prev];
-            const last = { ...updated[updated.length - 1] };
-            last.answer = last.pending ? event.content : last.answer + event.content;
-            last.pending = false;
-            updated[updated.length - 1] = last;
-            return updated;
-          });
-        } else if (event.type === "sources") {
-          // Attach source documents once streaming is complete
-          setChatHistory((prev) => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { ...updated[updated.length - 1], context: event.context };
-            return updated;
-          });
-          setContext(event.context);
+          if (event.type === "text") {
+            setStreamStatus("Generating best response...");
+            // Append each token; replace "Thinking..." on first chunk
+            setChatHistory((prev) => {
+              const updated = [...prev];
+              const last = { ...updated[updated.length - 1] };
+              last.answer = last.pending ? event.content : last.answer + event.content;
+              last.pending = false;
+              updated[updated.length - 1] = last;
+              return updated;
+            });
+          } else if (event.type === "sources") {
+            // Attach source documents once streaming is complete
+            setChatHistory((prev) => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { ...updated[updated.length - 1], context: event.context };
+              return updated;
+            });
+            setContext(event.context);
+          } else if (event.type === "done") {
+            setStreamStatus("");
+          }
         }
       }
+    } finally {
+      setStreamStatus("");
     }
   };
 
@@ -292,7 +301,8 @@ export default function Home() {
                     <div className="px-4 prose max-w-3xl">
                       {msg.pending ? (
                         <span>
-                          <BirdLoader /> Thinking...
+                          <BirdLoader />
+                          <span className="ml-2 text-sm text-gray-500">{streamStatus || "Thinking..."}</span>
                         </span>
                       ) : (
                         <div>
@@ -337,6 +347,14 @@ export default function Home() {
                                 ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1" {...props} />,
                                 li: ({node, ...props}) => <li className="mb-1 [&>p]:inline" {...props} />,
                                 strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
+                                a: ({node, ...props}) => (
+                                  <a
+                                    className="text-grey-100 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    {...props}
+                                  />
+                                ),
                               }}>
                               {msg.answer}
 
@@ -409,7 +427,12 @@ export default function Home() {
                             );return (
                               <li key={cidx} className="text-sm border-l-4 border-green-500 pl-4 py-1">
                                 {isUrl ? (
-                                  <a href={url} target="_blank" rel="noopener noreferrer">
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                  >
                                     {content}
                                   </a>
                                 ) : (

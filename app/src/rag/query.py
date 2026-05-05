@@ -43,10 +43,15 @@ perch_system_prompt = (
         Avoid generic advice. Reference concrete examples, research, or policy mechanisms when possible. If you don't have specific information, say so. 
         For recommendations, provide an 'Implementation Table' (in Markdown formatting) or list that includes: 1. The specific action. 2. A measurable KPI or target. 3. A projected timeline (e.g., Short-term: 1-3 months).
         For strategies, include a brief 'Constraint Analysis' section. Specifically address potential political, financial, or cultural barriers unique to the animal advocacy space and suggest one mitigation tactic for each.
-    4. Sources: 
-        Do not use phrases like 'Research indicates'; instead, use 'According to [Organization]' OR cite sources inline using format: (Organization, Year). Do not include a standalone Sources section in your response.
-        Never mention 'the documents' or 'the context provided.' 
-        If no relevant sources exist for your answer, acknowledge the gap and provide general knowledge if helpful.
+    4. Sources:
+        Every substantive factual claim MUST include an inline citation.
+        If a source URL exists, citation format MUST be a markdown hyperlink:
+        ([Source Name, Year](https://...)).
+        If URL is missing, use plain-text citation: (Source Name, Year).
+        Never use vague attribution like 'According to ...' without a citation.
+        Do not include a standalone Sources section in your response.
+        Never mention 'the documents' or 'the context provided.'
+        If no relevant sources exist for your answer, explicitly acknowledge the gap before giving best-effort guidance.
     5. Tone: 
         Professional and grounded. Assume the user has domain expertise in animal advocacy. 
         Answer questions directly. Be concise in prose but exhaustive in evidence.
@@ -127,13 +132,40 @@ combine_docs_chain = create_stuff_documents_chain(
 )
 
 # Score threshold of 0.85 means only chunks with cosine similarity >= 0.85 are returned.
-doc_retriever = PineconeRetriever(pinecone_vector_store=docsearch, score_threshold=0.85, top_k=5)
+# Lower top_k reduces context size and latency.
+doc_retriever = PineconeRetriever(pinecone_vector_store=docsearch, score_threshold=0.85, top_k=3)
 
 # History-aware retriever: ensures conversations have chat history saved and the retriever is aware of history
 history_aware_retriever = create_history_aware_retriever(
     llm, doc_retriever, contextualize_q_prompt
 )
 
-# create_retrieval_chain: wraps the retriever + combine_docs_chain into one pipeline.
-# Calling retrieval_chain.invoke({"input": question}) returns {"answer": ..., "context": ...}.
-retrieval_chain = create_retrieval_chain(history_aware_retriever, combine_docs_chain)
+# Build two chains:
+# 1) With query contextualization for multi-turn chat
+# 2) Direct retrieval for first-turn / empty-history requests to cut latency
+retrieval_chain_with_history = create_retrieval_chain(history_aware_retriever, combine_docs_chain)
+retrieval_chain_no_history = create_retrieval_chain(doc_retriever, combine_docs_chain)
+
+
+class AdaptiveRetrievalChain:
+    """
+    Route to the faster direct-retrieval chain when chat history is empty.
+    """
+
+    def _use_history_chain(self, inputs: dict) -> bool:
+        history = inputs.get("chat_history")
+        return bool(history)
+
+    def invoke(self, inputs: dict):
+        chain = retrieval_chain_with_history if self._use_history_chain(inputs) else retrieval_chain_no_history
+        return chain.invoke(inputs)
+
+    async def astream(self, inputs: dict):
+        chain = retrieval_chain_with_history if self._use_history_chain(inputs) else retrieval_chain_no_history
+        async for chunk in chain.astream(inputs):
+            yield chunk
+
+
+# Calling retrieval_chain.invoke({"input": question, "chat_history": [...]})
+# returns {"answer": ..., "context": ...}.
+retrieval_chain = AdaptiveRetrievalChain()
