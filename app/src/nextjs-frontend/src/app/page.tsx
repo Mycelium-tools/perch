@@ -111,13 +111,22 @@ export default function Home() {
 
   const lastMsgRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null); // dummy element at bottom for auto-scroll
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 
-  // Scroll to bottom whenever chat updates (including during streaming)
+  // Scroll to bottom during updates only when user is already near the bottom.
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    if (autoScrollEnabled && bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "auto" });
     }
-  }, [chatHistory]);
+  }, [chatHistory, autoScrollEnabled]);
+
+  const handleChatScroll = () => {
+    const el = chatScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setAutoScrollEnabled(distanceFromBottom < 80);
+  };
 
   const [sessionId, setSessionId] = useState<string | null>(null);
 
@@ -128,6 +137,7 @@ export default function Home() {
 
   const submitQuestion = async (questionText: string) => {
     if (!sessionId) return; // Don't send request until sessionId is set
+    setAutoScrollEnabled(true);
 
     if (!activeChatId) {
       // Create a new chat
@@ -261,7 +271,11 @@ export default function Home() {
 
         {/* CHAT HISTORY - This should be the scrollable area */}
         {chatHistory.length > 0 && (
-          <div className="flex-1 overflow-y-auto px-4 pb-60">
+          <div
+            ref={chatScrollRef}
+            onScroll={handleChatScroll}
+            className="flex-1 overflow-y-auto px-4 pb-60"
+          >
             <div className="flex flex-col gap-6 max-w-5xl mx-auto">
               {chatHistory.map((msg, idx) => (
                 <div key={idx} ref={idx === chatHistory.length - 1 ? lastMsgRef : null}>
