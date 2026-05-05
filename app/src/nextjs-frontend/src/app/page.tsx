@@ -89,32 +89,32 @@ export default function Home() {
     {
       id: 3,
       icon: "document-review",
-      text: "I want to start a fur-free campaign in my city to push for a local ban on fur sales. What should I know before getting started? Are there any pitfalls or lessons from previous campaigns I should be aware of?"
+      text: "I want to push for a local ban on fur sales in my city. Are there any pitfalls or lessons from previous campaigns I should be aware of?"
     },
     {
       id: 4,
       icon: "roadmap",
-      text: "placeholder text"
+      text: "How can we better communicate the link between biodiversity loss and animal welfare?"
     },
     {
       id: 5,
       icon: "gavel-search",
-      text: "placeholder text"
+      text: "What metrics should we track for our Meatless Mondays campaign?"
     },
     {
       id: 6,
       icon: "group-mobilize",
-      text: "placeholder text"
+      text: "What does the research say about consumer attitudes toward veganism?"
     },
     {
       id: 7,
       icon: "calendar-clock",
-      text: "placeholder text"
+      text: "What are the strongest counterarguments to invertebrate protection, and how do we respond?"
     },
     {
       id: 8,
       icon: "bar-chart-forecast",
-      text: "placeholder text"
+      text: "What are effective messaging strategies for corporate cage-free campaigns?"
     }
   ];
 

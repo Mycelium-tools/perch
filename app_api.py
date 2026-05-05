@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
 import json
+import time
 from app.src.rag.query import retrieval_chain  # retrieval chain from RAG pipeline
 from app.src.rag.query import llm  # NOTE: llm is imported but not used in the active endpoint;
                                 # it is only referenced in the commented-out history version below
@@ -107,13 +108,18 @@ async def ask_question_stream(request: Request):
     history = user_histories.get(session_id, [])
 
     async def generate():
+        request_start = time.perf_counter()
         context_docs = []
         full_answer = ""
         sent_docs_status = False
+        docs_retrieved_at = None
+        first_answer_token_at = None
+
         async for chunk in retrieval_chain.astream({"input": user_input, "chat_history": history}):
             if "context" in chunk:
                 context_docs = chunk["context"]
                 if context_docs and not sent_docs_status:
+                    docs_retrieved_at = time.perf_counter()
                     yield f"data: {json.dumps({'type': 'status', 'stage': 'docs_retrieved'})}\n\n"
                     sent_docs_status = True
                 # --- DEBUG LOGGING START ---
@@ -129,6 +135,8 @@ async def ask_question_stream(request: Request):
                     print(f"    TEXT: {snippet}...")
                 # --- DEBUG LOGGING END ---
             if "answer" in chunk and chunk["answer"]:
+                if first_answer_token_at is None:
+                    first_answer_token_at = time.perf_counter()
                 full_answer += chunk["answer"]
                 yield f"data: {json.dumps({'type': 'text', 'content': chunk['answer']})}\n\n"
         
@@ -141,6 +149,27 @@ async def ask_question_stream(request: Request):
         serialized = [{"metadata": d.metadata, "page_content": d.page_content} for d in context_docs]
         yield f"data: {json.dumps({'type': 'sources', 'context': serialized})}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        # Timing logs for latency analysis
+        end_time = time.perf_counter()
+        total_ms = (end_time - request_start) * 1000
+        docs_ms = ((docs_retrieved_at - request_start) * 1000) if docs_retrieved_at else None
+        first_token_ms = ((first_answer_token_at - request_start) * 1000) if first_answer_token_at else None
+        docs_to_first_token_ms = (
+            (first_answer_token_at - docs_retrieved_at) * 1000
+            if docs_retrieved_at and first_answer_token_at
+            else None
+        )
+
+        print(
+            "[TIMING] /ask/stream "
+            f"total_ms={total_ms:.1f} "
+            f"docs_retrieved_ms={'NA' if docs_ms is None else f'{docs_ms:.1f}'} "
+            f"first_token_ms={'NA' if first_token_ms is None else f'{first_token_ms:.1f}'} "
+            f"docs_to_first_token_ms={'NA' if docs_to_first_token_ms is None else f'{docs_to_first_token_ms:.1f}'} "
+            f"question_len={len(user_input)} "
+            f"retrieved_docs={len(context_docs)}"
+        )
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
