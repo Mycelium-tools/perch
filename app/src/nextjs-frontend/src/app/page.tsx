@@ -10,6 +10,16 @@ import { useChat } from "../components/ClientLayout";
 import Image from "next/image";
 
 type Chat = { id: string; title: string; history: { question: string; answer: string; context?: any; pending?: boolean }[] };
+const SEARCH_STATUS_MESSAGES = [
+  "Searching knowledge base...",
+  "Accessing movement data...",
+  "Compiling relevant sources..."
+];
+const GENERATING_STATUS_MESSAGES = [
+  "Analyzing documents...",
+  "Extracting key information...",
+  "Creating a plan...",
+];
 
 export default function Home() {
   const { chats, setChats, activeChatId, setActiveChatId, chatHistory, setChatHistory } = useChat();
@@ -17,6 +27,8 @@ export default function Home() {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showSnackbar, setShowSnackbar] = useState(false);
   const [streamStatus, setStreamStatus] = useState<string>("");
+  const [statusMode, setStatusMode] = useState<"idle" | "searching" | "compiling">("idle");
+  const [statusIndex, setStatusIndex] = useState(0);
 
   // Sync chatHistory changes back to the active chat
   useEffect(() => {
@@ -136,10 +148,22 @@ export default function Home() {
     setSessionId(getSessionId());
   }, []);
 
+  useEffect(() => {
+    if (statusMode === "idle") return;
+    const messages = statusMode === "searching" ? SEARCH_STATUS_MESSAGES : GENERATING_STATUS_MESSAGES;
+    setStreamStatus(messages[statusIndex % messages.length]);
+    const timer = window.setInterval(() => {
+      setStatusIndex((prev) => prev + 1);
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [statusMode, statusIndex]);
+
   const submitQuestion = async (questionText: string) => {
     if (!sessionId) return; // Don't send request until sessionId is set
     setAutoScrollEnabled(true);
-    setStreamStatus("Finding relevant sources...");
+    setStatusMode("searching");
+    setStatusIndex(0);
+    setStreamStatus(SEARCH_STATUS_MESSAGES[0]);
 
     if (!activeChatId) {
       // Create a new chat
@@ -202,7 +226,6 @@ export default function Home() {
           const event = JSON.parse(line.slice(6));
 
           if (event.type === "text") {
-            setStreamStatus("Generating best response...");
             // Append each token; replace "Thinking..." on first chunk
             setChatHistory((prev) => {
               const updated = [...prev];
@@ -212,6 +235,9 @@ export default function Home() {
               updated[updated.length - 1] = last;
               return updated;
             });
+          } else if (event.type === "status" && event.stage === "docs_retrieved") {
+            setStatusMode("compiling");
+            setStatusIndex(0);
           } else if (event.type === "sources") {
             // Attach source documents once streaming is complete
             setChatHistory((prev) => {
@@ -221,11 +247,13 @@ export default function Home() {
             });
             setContext(event.context);
           } else if (event.type === "done") {
+            setStatusMode("idle");
             setStreamStatus("");
           }
         }
       }
     } finally {
+      setStatusMode("idle");
       setStreamStatus("");
     }
   };
@@ -238,6 +266,30 @@ export default function Home() {
   const onPromptClick = async (promptText: string) => {
     setQuestion(promptText);
     await submitQuestion(promptText);
+  };
+
+  const sourceUsedInAnswer = (answer: string, doc: any) => {
+    const answerLower = (answer || "").toLowerCase();
+    const sourceName = (doc?.metadata?.source_name || "").toLowerCase().trim();
+    const sourceUrl = (doc?.metadata?.source_url || "").toLowerCase().trim();
+
+    if (!answerLower) return false;
+    if (sourceName && answerLower.includes(sourceName)) return true;
+    if (sourceUrl && answerLower.includes(sourceUrl)) return true;
+    return false;
+  };
+
+  const getUsedSources = (answer: string, context: any[]) => {
+    const uniqueDocs = Array.from(
+      new Map(
+        (context || []).map((doc: any) => [
+          doc.metadata?.source_name || "Untitled Document",
+          doc
+        ])
+      ).values()
+    ) as any[];
+
+    return uniqueDocs.filter((doc: any) => sourceUsedInAnswer(answer, doc));
   };
 
 
@@ -369,7 +421,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {msg.context && (
+                  {msg.context && getUsedSources(msg.answer, msg.context).length > 0 && (
                     <div className="flex items-center gap-2 mb-2 mt-4 pl-6 max-w-3xl w-full">
                       {/* COPY */}
                       <button
@@ -409,15 +461,12 @@ export default function Home() {
                         <FolderSearch className="w-4 h-4" />
                         Retrieved Research & Policy Documents
                         </h3>
+                        {(() => {
+                          const docsToDisplay = getUsedSources(msg.answer, msg.context);
+
+                          return (
                         <ul className="space-y-4">
-                          {Array.from(
-                            new Map(
-                              msg.context.map((doc: any) => [
-                                doc.metadata?.source_name || "Untitled Document",
-                                doc
-                              ])
-                            ).values()
-                          ).map((doc: any, cidx: number) => {
+                          {docsToDisplay.map((doc: any, cidx: number) => {
                             const url = doc.metadata?.source_url || "";
                             const isUrl = url.startsWith("http"); // Check if it's a web link or a file path
                             const content = (
@@ -443,6 +492,8 @@ export default function Home() {
                           }
                           )}
                         </ul>
+                          );
+                        })()}
                       </div>
                   )}
                 </div>
