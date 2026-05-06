@@ -59,7 +59,7 @@ class WebScraper:
             parsed_url = urlparse(url)
             parsed_seed = urlparse(seed_url)
             return (
-                parsed_url.netloc == parsed_seed.netloc and
+                # parsed_url.netloc == parsed_seed.netloc and
                 not any(p in url for p in self.INTERNAL_BLACKLIST) and
                 url not in visited
             )
