@@ -17,8 +17,15 @@ import json
 import time
 import sys
 import re
+import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 from dotenv import load_dotenv
+import requests
+try:
+    import fitz  # PyMuPDF
+except Exception:
+    fitz = None
 
 from langchain_pinecone import PineconeEmbeddings, PineconeVectorStore
 from pinecone import Pinecone, ServerlessSpec
@@ -104,6 +111,98 @@ def clean_docs(docs):
         doc.page_content = text.strip()
         
     return docs
+
+
+def choose_organization(default_org, detected_org, context_label, org_choice_cache=None):
+    """
+    Resolve organization value, optionally prompting the operator.
+    Supports custom corrected org input.
+    """
+    default_org = (default_org or "").strip()
+    detected_org = (detected_org or "").strip()
+    org_choice_cache = org_choice_cache if org_choice_cache is not None else {}
+
+    if not default_org and not detected_org:
+        return ""
+    if default_org and not detected_org:
+        return default_org
+    if detected_org and not default_org:
+        if not sys.stdin.isatty():
+            return detected_org
+        cache_key = ("", detected_org.lower())
+        if cache_key in org_choice_cache:
+            return org_choice_cache[cache_key]
+        answer = input(
+            f"\nDetected organization '{detected_org}' for:\n{context_label}\n"
+            "Enter organization to use [Enter=detected, custom text=override]: "
+        ).strip()
+        chosen = answer if answer else detected_org
+        org_choice_cache[cache_key] = chosen
+        return chosen
+
+    if default_org.lower() == detected_org.lower():
+        return default_org
+
+    cache_key = (default_org.lower(), detected_org.lower())
+    if cache_key in org_choice_cache:
+        return org_choice_cache[cache_key]
+
+    if not sys.stdin.isatty():
+        return default_org
+
+    answer = input(
+        f"\nOrganization mismatch for:\n{context_label}\n"
+        f"  default:  {default_org}\n"
+        f"  detected: {detected_org}\n"
+        "Enter organization to use [Enter=default, d=detected, custom text=override]: "
+    ).strip()
+
+    if not answer:
+        chosen = default_org
+    elif answer.lower() in {"d", "detected", "y", "yes"}:
+        chosen = detected_org
+    else:
+        chosen = answer
+
+    org_choice_cache[cache_key] = chosen
+    return chosen
+
+
+def detect_pdf_organization(local_pdf_path: Path, source_hint: str = ""):
+    """
+    Best-effort org detection for PDFs from metadata, with domain fallback.
+    """
+    detected = ""
+    if fitz is not None and local_pdf_path and local_pdf_path.exists():
+        try:
+            doc = fitz.open(str(local_pdf_path))
+            md = doc.metadata or {}
+            doc.close()
+            candidates = [
+                md.get("author", ""),
+                md.get("subject", ""),
+                md.get("title", ""),
+                md.get("creator", ""),
+                md.get("producer", ""),
+            ]
+            bad_tokens = ("acrobat", "microsoft", "word", "latex", "pdf", "scanner")
+            for c in candidates:
+                val = (c or "").strip()
+                if not val:
+                    continue
+                low = val.lower()
+                if any(tok in low for tok in bad_tokens):
+                    continue
+                if len(val) >= 3:
+                    detected = val
+                    break
+        except Exception:
+            pass
+
+    if not detected and isinstance(source_hint, str) and source_hint.startswith(("http://", "https://")):
+        detected = urlparse(source_hint).netloc.replace("www.", "").strip()
+
+    return detected
 
 def export_chunks_to_json(chunks, filename="chunk_context_audit.json"):
     """
@@ -217,13 +316,17 @@ def upsert_chunks_batched(chunks, index_name, embedding, namespace):
 # INGESTION FUNCTIONS - PDF
 # ============================================================================
 
-def ingest_pdf(entry, json_dir=None):
+def ingest_pdf(entry, json_dir=None, org_choice_cache=None):
     """
     Ingest a single PDF from a JSON entry.
     """
     file_path = entry.get('source')
-    
-    if json_dir:
+    is_remote_pdf = isinstance(file_path, str) and file_path.startswith(("http://", "https://"))
+    temp_download_path = None
+
+    if is_remote_pdf:
+        full_path = None
+    elif json_dir:
         full_path = (json_dir / file_path).resolve()
     else:
         full_path = get_full_path(file_path).resolve()
@@ -231,7 +334,11 @@ def ingest_pdf(entry, json_dir=None):
     namespace = entry.get('namespace', DEFAULT_NAMESPACE)
     meta = entry.get('meta', {})
     
-    if not file_path or not full_path.exists():
+    if not file_path:
+        print("⚠️  Missing PDF source")
+        return
+
+    if not is_remote_pdf and not full_path.exists():
         print(f"⚠️  File not found: {full_path}")
         return
     
@@ -241,6 +348,33 @@ def ingest_pdf(entry, json_dir=None):
         meta['name'] = display_name
     
     try:
+        if is_remote_pdf:
+            print(f"🌐 Downloading remote PDF...")
+            resp = requests.get(file_path, timeout=45)
+            resp.raise_for_status()
+
+            suffix = ".pdf"
+            parsed = urlparse(file_path)
+            if parsed.path.lower().endswith(".pdf"):
+                suffix = Path(parsed.path).suffix or ".pdf"
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(resp.content)
+                temp_download_path = Path(tmp.name)
+
+            full_path = temp_download_path
+            print(f"✅ Downloaded PDF to temp file: {full_path}")
+
+        detected_org = detect_pdf_organization(full_path, source_hint=file_path if is_remote_pdf else "")
+        chosen_org = choose_organization(
+            default_org=meta.get("organization", ""),
+            detected_org=detected_org,
+            context_label=str(file_path),
+            org_choice_cache=org_choice_cache
+        )
+        if chosen_org:
+            meta["organization"] = chosen_org
+
         # STEP 1: Load PDF
         print(f"📖 Loading PDF...")
         loader = PyMuPDFLoader(str(full_path))
@@ -286,6 +420,13 @@ def ingest_pdf(entry, json_dir=None):
         
     except Exception as e:
         print(f"❌ Error processing {full_path}: {e}")
+    finally:
+        if temp_download_path and temp_download_path.exists():
+            try:
+                temp_download_path.unlink()
+                print(f"🧹 Removed temp PDF: {temp_download_path}")
+            except Exception:
+                pass
 
 # ============================================================================
 # INGESTION FUNCTIONS - WEB (single URL or web crawl + scrape)
@@ -310,6 +451,7 @@ def ingest_web(entry):
     urls_to_process = sources if isinstance(sources, list) else [sources]
     
     total_ingested = 0
+    org_choice_cache = {}
 
     try:
         for url in urls_to_process:
@@ -325,15 +467,39 @@ def ingest_web(entry):
             # STEP 2: Convert each webpage to Markdown
             for page in pages:
                 current_url = page.get('url')
+                if page.get("content_type") == "pdf" or (
+                    isinstance(current_url, str) and current_url.lower().split("?")[0].endswith(".pdf")
+                ):
+                    pdf_entry = {
+                        "type": "pdf",
+                        "source": current_url,
+                        "namespace": namespace,
+                        "meta": entry.get("meta", {}),
+                    }
+                    ingest_pdf(pdf_entry, json_dir=None, org_choice_cache=org_choice_cache)
+                    total_ingested += 1
+                    continue
+
                 markdown_text = page['markdown']
                 page_title = page.get('title', 'Untitled')
-                # Add page title as the document name in the metadata
                 existing_meta = entry.get('meta', {})
+                detected_org = (page.get("detected_organization") or "").strip()
+                default_org = (existing_meta.get("organization") or "").strip()
+
+                chosen_org = choose_organization(
+                    default_org=default_org,
+                    detected_org=detected_org,
+                    context_label=current_url,
+                    org_choice_cache=org_choice_cache
+                )
+
                 updated_meta = {
                     "name": existing_meta.get("name", page_title),
                     "url": current_url,
                     **existing_meta 
                 }
+                if chosen_org:
+                    updated_meta["organization"] = chosen_org
 
                 if not markdown_text:
                     continue

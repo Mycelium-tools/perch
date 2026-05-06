@@ -1,4 +1,5 @@
 import time
+import json
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
@@ -80,6 +81,52 @@ class WebScraper:
             finally:
                 browser.close()
 
+    def _detect_organization(self, soup, url):
+        """Best-effort organization/publisher detection from page metadata."""
+        og_site = soup.find("meta", attrs={"property": "og:site_name"})
+        if og_site and og_site.get("content"):
+            return og_site.get("content").strip()
+
+        for name in ("publisher", "article:publisher", "author"):
+            tag = soup.find("meta", attrs={"name": name}) or soup.find("meta", attrs={"property": name})
+            if tag and tag.get("content"):
+                value = tag.get("content").strip()
+                if value:
+                    return value
+
+        for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+            raw = (script.string or "").strip()
+            if not raw:
+                continue
+            try:
+                payload = json.loads(raw)
+            except Exception:
+                continue
+
+            def extract_org(obj):
+                if isinstance(obj, dict):
+                    pub = obj.get("publisher")
+                    if isinstance(pub, dict) and pub.get("name"):
+                        return str(pub["name"]).strip()
+                    if obj.get("@type") in ("Organization", "NewsMediaOrganization") and obj.get("name"):
+                        return str(obj["name"]).strip()
+                    for v in obj.values():
+                        out = extract_org(v)
+                        if out:
+                            return out
+                elif isinstance(obj, list):
+                    for item in obj:
+                        out = extract_org(item)
+                        if out:
+                            return out
+                return None
+
+            org = extract_org(payload)
+            if org:
+                return org
+
+        return urlparse(url).netloc.replace("www.", "").strip() or "Unknown"
+
     def _extract_markdown_and_links(self, html_content, url, seed_url, visited, container_selector=None):
         """Convert HTML to cleaned Markdown and collect valid links."""
         soup = BeautifulSoup(html_content, 'lxml')
@@ -106,8 +153,14 @@ class WebScraper:
         cleaned_markdown = "\n".join(line.rstrip() for line in markdown_text.split('\n') if line.strip())
 
         title = (soup.title.string if soup.title else url).strip()
+        detected_org = self._detect_organization(soup, url)
         print(f"   Found Page Title: {title}")
-        return {"url": url, "title": title, "markdown": cleaned_markdown}, links
+        return {
+            "url": url,
+            "title": title,
+            "markdown": cleaned_markdown,
+            "detected_organization": detected_org
+        }, links
 
     # -------------------
     # Public Methods
@@ -118,12 +171,19 @@ class WebScraper:
         use_js=True -> uses Playwright for JS-heavy pages
         """
         try:
+            # Route PDFs to the PDF ingestion path instead of trying to parse as HTML.
+            if url.lower().split("?")[0].endswith(".pdf"):
+                return {"url": url, "title": url, "markdown": "", "content_type": "pdf"}, set()
+
             if use_js:
                 page_content = self._process_url_dynamic(url)
             else:
                 time.sleep(0.5)
                 resp = self.session.get(url, timeout=15)
                 resp.raise_for_status()
+                content_type = (resp.headers.get("content-type") or "").lower()
+                if "application/pdf" in content_type:
+                    return {"url": url, "title": url, "markdown": "", "content_type": "pdf"}, set()
                 page_content = resp.text
 
             if not page_content:
@@ -170,6 +230,10 @@ class WebScraper:
                     if result:
                         if is_seed_layer and skip_ingesting_seed:
                             print(f"   [Skipping Seed] {result['url']}")
+                            continue
+                        if result.get("content_type") == "pdf":
+                            print(f"   ✅ [MARKED PDF TO INGEST] {result['url']}")
+                            all_results.append(result)
                             continue
                         if len(result['markdown']) > 200:
                             print(f"   ✅ [MARKED TO INGEST] {result['url']} ({len(result['markdown'])} chars)")

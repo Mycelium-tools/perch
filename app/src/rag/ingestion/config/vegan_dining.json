@@ -281,5 +281,58 @@
       "publication_date": "2024-01-01",
       "tags": ["default_veg", "campus_programs", "implementation_guidance", "behavior_change"]
     }
+  },
+  {
+    "type": "pdf",
+    "source": "https://www.humaneworld.org/sites/default/files/docs/HWFA_CU-scorecard.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "College and university protein sustainability scorecard",
+      "organization": "Humane World for Animals",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "doc_type": "report",
+      "publication_date": "2025-01-01",
+      "tags": ["default_veg", "campus_programs", "university_dining", "case_studies", "plant_protein"]
+    }
+  },
+  {
+    "type": "web",
+    "source": "https://yaledailynews.com/articles/students-call-for-dining-halls-to-serve-only-vegan-desserts",
+    "namespace": "animal_policies",
+    "meta": {
+      "name": "Students call for dining halls to serve only vegan desserts",
+      "organization": "Yale Daily News",
+      "primary_focus": "vegan_diet_and_lifestyle",
+      "doc_type": "article",
+      "publication_date": "2025-02-18",
+      "tags": ["student_advocacy", "campus_programs", "university_dining", "case_studies", "plant_forward", "yale", "effective_altruism"]
+    }
+  },
+  {
+    "type": "web",
+    "config": {
+      "is_crawl": true,
+      "skip_ingesting_seed": false,
+      "max_depth": 1,
+      "max_threads": 3
+    },
+    "source": [
+      "https://faunalytics.org/research-round-up-a-guide-for-university-advocates/"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "tags": [
+        "animal advocacy",
+        "data analysis",
+        "impact studies",
+        "campus_dining",
+        "campus_programs",
+        "default_veg",
+        "vegan_advocacy"
+      ]
+    }
   }
 ]
