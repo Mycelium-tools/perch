@@ -132,7 +132,7 @@ combine_docs_chain = create_stuff_documents_chain(
 
 # Score threshold of 0.85 means only chunks with cosine similarity >= 0.85 are returned.
 # Lower top_k reduces context size and latency.
-doc_retriever = PineconeRetriever(pinecone_vector_store=docsearch, score_threshold=0.9, top_k=5)
+doc_retriever = PineconeRetriever(pinecone_vector_store=docsearch, score_threshold=0.85, top_k=7)
 
 # History-aware retriever: ensures conversations have chat history saved and the retriever is aware of history
 history_aware_retriever = create_history_aware_retriever(
