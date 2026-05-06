@@ -1,95 +1,95 @@
 [
   {
     "type": "pdf",
-    "source": "../pdfs/animals-15-03158-v2.pdf",
+    "source": "../pdfs/furfree-hsus-toolkit-0920-digital.pdf",
     "namespace": "animal_policies",
     "meta": {
-      "name": "Messaging Impacts Public Perspectives Towards Fur Farming in the Northeastern United States",
-      "organization": "Colorado State University, ",
-      "primary_focus": "Fur",
-      "pub_year": "2025",
+      "name": "Fur-Free Toolkit",
+      "organization": "Humane World for Animals",
+      "primary_focus": "effective_advocacy",
       "doc_type": "report",
-      "tags": ["nyc", "fur", "farmed animals", "animal advocacy", "legislation"]
+      "publication_date": "2020-09-01",
+      "tags": [
+        "fur",
+        "fur_free",
+        "campaign_toolkit",
+        "policy_advocacy",
+        "legislation"
+      ]
     }
   },
   {
     "type": "pdf",
-    "source": "../pdfs/carriage_horse_heat_2019.pdf",
+    "source": "../pdfs/four-paws-yougov-survey-2.pdf",
     "namespace": "animal_policies",
     "meta": {
-      "name": "Rental Horse Licensing and Protection Law",
-      "url": "https://nycadmincode.readthedocs.io/t17/c03/sch03/",
-      "organization": "NYC Adminstrative Code",
-      "primary_focus": "Animals in Entertainment",
-      "pub_date": "2018-02-24",
-      "doc_type": "legal code",
-      "tags": ["nyc", "hose", "horse drawn cabs", "animal welfare", "legislation"]
-    }
-  },
-  {
-    "type": "pdf",
-    "source": "../pdfs/Industry Costs For Chicken, Egg, And Fish Products In The United States, Brazil, And China.pdf",
-    "namespace": "animal_policies",
-    "meta": {
-      "url": "https://osf.io/e8p93/files/2rb49",
-      "organization": "Faunalytics",
-      "primary_focus": "Farmed Animals",
-      "pub_date": "2025-09-25",
+      "name": "FOUR PAWS YouGov Survey 2",
+      "organization": "FOUR PAWS",
+      "primary_focus": "effective_advocacy",
       "doc_type": "report",
-      "tags": ["china", "fish", "chicken", "eggs", "animal agriculture"]
+      "publication_date": "2025-12-01",
+      "tags": [
+        "fur",
+        "public_opinion",
+        "survey",
+        "consumer_attitudes"
+      ]
     }
   },
   {
-    "type": "pdf",
-    "source": "../pdfs/Report - Research and Data Phase II - China and Southeast Asia.pdf",
+    "type": "web",
+    "source": "https://www.furfreealliance.com/fur-bans/",
     "namespace": "animal_policies",
     "meta": {
-      "url": "https://osf.io/5w6tu/files/nt56h",
-      "organization": "Faunalytics",
-      "primary_focus": "Effective Advocacy",
-      "pub_date": "2025-05-20",
-      "doc_type": "report",
-      "tags": ["china", "southeast asia", "global south", "farmed animals", "animal advocacy"]
+      "name": "Fur Bans",
+      "organization": "Fur Free Alliance",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "website",
+      "publication_date": "2026-05-05",
+      "tags": [
+        "fur",
+        "fur_bans",
+        "global_policy",
+        "legislation"
+      ]
     }
   },
   {
-    "type": "pdf",
-    "source": "../pdfs/Chinese Consumers' Attitudes Toward Animal Welfare.pdf",
+    "type": "web",
+    "source": "https://proanimal.org/legislating-a-fur-free-america-lessons-strategies-from-fur-ban-successes/",
     "namespace": "animal_policies",
     "meta": {
-      "url": "https://osf.io/vw6hd/files/nxep2",
-      "organization": "Faunalytics",
-      "primary_focus": "Effective Advocacy",
-      "pub_date": "2023-01-02",
-      "doc_type": "report",
-      "tags": ["china", "messaging", "attitudes and beliefs", "consumers", "farmed animals", "animal welfare"]
+      "name": "Legislating a Fur-Free America: Lessons & Strategies from Fur Ban Successes",
+      "organization": "Pro-Animal Future",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "publication_date": "2026-02-13",
+      "tags": [
+        "fur",
+        "fur_free",
+        "us_policy",
+        "campaign_strategy",
+        "legislation"
+      ]
     }
   },
   {
-    "type": "pdf",
-    "source": "../pdfs/Exploring Gen Z's Attitudes Towards Animals And The Environment.pdf",
+    "type": "web",
+    "source": "https://www.rmpbs.org/news/election-2024/denver-fur-ban-308",
     "namespace": "animal_policies",
     "meta": {
-      "url": "https://osf.io/fk53c/files/b5gu6",
-      "organization": "Faunalytics",
-      "primary_focus": "Effective Advocacy",
-      "pub_date": "2025-02-25",
-      "doc_type": "report",
-      "tags": ["survey", "china", "gen z", "animals and the environment", "attitudes and beliefs", "animal advocacy"]
-    }
-  },
-  {
-    "type": "pdf",
-    "source": "../pdfs/Chickens-and-Fishes-China.pdf",
-    "namespace": "animal_policies",
-    "meta": {
-      "name": "Beliefs About Fishes and Chickens & Their Relation to Animal-Positive Behaviors in China",
-      "url": "https://osf.io/preprints/psyarxiv/8v9hj_v1",
-      "organization": "Faunalytics, Mercy for Animals",
-      "primary_focus": "Effective Advocacy",
-      "pub_date": "2022-01-26",
-      "doc_type": "preprint",
-      "tags": ["fish", "chicken", "china", "attitudes and beliefs", "farmed animals", "animal advocacy"]
+      "name": "Denver voters reject proposed ban on fur ban",
+      "organization": "Rocky Mountain PBS",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "publication_date": "2024-11-06",
+      "tags": [
+        "fur",
+        "denver",
+        "ballot_measure",
+        "local_policy",
+        "legislation"
+      ]
     }
   }
 ]

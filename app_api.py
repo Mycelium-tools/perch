@@ -20,9 +20,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import uvicorn
 import json
+import time
+import os
 from app.src.rag.query import retrieval_chain  # retrieval chain from RAG pipeline
-from app.src.rag.query import llm  # NOTE: llm is imported but not used in the active endpoint;
-                                # it is only referenced in the commented-out history version below
 
 
 app = FastAPI()
@@ -43,13 +43,34 @@ app.add_middleware(
 # Resets on server restart; TODO: use a database for persistence in production.
 user_histories = {}
 
-def build_history_text(history):
-    # Formats a list of {"role": "user"|"assistant", "content": str} dicts
-    # into a plain-text conversation transcript for injection into the prompt.
-    # NOTE: also only used in the commented-out endpoint below.
-    return "\n".join(
-        f"{'User' if m['role']=='user' else 'Assistant'}: {m['content']}" for m in history
-    )
+# Controls for debug logging based on env vars
+def _env_flag(name: str, default: int = 0) -> bool:
+    return os.environ.get(name, default)
+DEBUG_ALL = _env_flag("PERCH_DEBUG", 0)
+DEBUG_RETRIEVAL = DEBUG_ALL or _env_flag("PERCH_RETRIEVAL_DEBUG", 0)
+DEBUG_TIMING = DEBUG_ALL or _env_flag("PERCH_TIMING_DEBUG", 0)
+
+
+def log_retrieved_docs(context_docs, *, header: str = ""):
+    if header:
+        print(f"\n--- RETRIEVAL DEBUG {header} ---")
+    if not context_docs:
+        print("❌ NO DOCUMENTS RETRIEVED")
+        if header:
+            print("-------------------------------------------\n")
+        return
+
+    for i, doc in enumerate(context_docs):
+        name = doc.metadata.get("source_name", "Unknown Name")
+        url = doc.metadata.get("source_url", "No URL")
+        chunk_id = doc.metadata.get("chunk_id", "No ID")
+        snippet = doc.page_content[:250].replace('\n', ' ')
+        print(f"[{i+1}] NAME: {name}")
+        print(f"    URL:  {url}")
+        print(f"    chunk_id:  {chunk_id}")
+        print(f"    TEXT: {snippet}...")
+    if header:
+        print("-------------------------------------------\n")
 
 @app.get("/health")
 async def health():
@@ -76,20 +97,8 @@ async def ask_question(request: Request):
     history.append({"role": "assistant", "content": result["answer"]})
     user_histories[session_id] = history
 
-    # DEBUG LOGGING: Loop through retrieved chunks and log to terminal
-    print(f"\n--- RETRIEVAL DEBUG FOR: '{user_input}' ---")
-    if not result["context"]:
-        print("❌ NO DOCUMENTS RETRIEVED")
-    else:
-        for i, doc in enumerate(result["context"]):
-            name = doc.metadata.get("source_name", "Unknown Name")
-            url = doc.metadata.get("source_url", "No URL")
-            # Print a snippet of the text to verify the content matches the metadata
-            snippet = doc.page_content[:250].replace('\n', ' ')
-            print(f"[{i+1}] NAME: {name}")
-            print(f"    URL:  {url}")
-            print(f"    TEXT: {snippet}...")
-    print("-------------------------------------------\n")
+    if DEBUG_RETRIEVAL:
+        log_retrieved_docs(result["context"], header=f"FOR: '{user_input}'")
 
     return {
         "answer": result["answer"],
@@ -107,28 +116,25 @@ async def ask_question_stream(request: Request):
     history = user_histories.get(session_id, [])
 
     async def generate():
+        request_start = time.perf_counter()
         context_docs = []
         full_answer = ""
         sent_docs_status = False
+        docs_retrieved_at = None
+        first_answer_token_at = None
+
         async for chunk in retrieval_chain.astream({"input": user_input, "chat_history": history}):
             if "context" in chunk:
                 context_docs = chunk["context"]
                 if context_docs and not sent_docs_status:
+                    docs_retrieved_at = time.perf_counter()
                     yield f"data: {json.dumps({'type': 'status', 'stage': 'docs_retrieved'})}\n\n"
                     sent_docs_status = True
-                # --- DEBUG LOGGING START ---
-                for i, doc in enumerate(context_docs):
-                    name = doc.metadata.get("source_name", "Unknown Name")
-                    url = doc.metadata.get("source_url", "No URL")
-                    chunk_id = doc.metadata.get("chunk_id", "No ID")
-                    # Print a snippet of the text to verify the content matches the metadata
-                    snippet = doc.page_content[:250].replace('\n', ' ')
-                    print(f"[{i+1}] NAME: {name}")
-                    print(f"    URL:  {url}")
-                    print(f"    chunk_id:  {chunk_id}")
-                    print(f"    TEXT: {snippet}...")
-                # --- DEBUG LOGGING END ---
+                if DEBUG_RETRIEVAL:
+                    log_retrieved_docs(context_docs)
             if "answer" in chunk and chunk["answer"]:
+                if first_answer_token_at is None:
+                    first_answer_token_at = time.perf_counter()
                 full_answer += chunk["answer"]
                 yield f"data: {json.dumps({'type': 'text', 'content': chunk['answer']})}\n\n"
         
@@ -142,6 +148,27 @@ async def ask_question_stream(request: Request):
         yield f"data: {json.dumps({'type': 'sources', 'context': serialized})}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
+        if DEBUG_TIMING:
+            # Timing logs for latency analysis
+            end_time = time.perf_counter()
+            total_ms = (end_time - request_start) * 1000
+            docs_ms = ((docs_retrieved_at - request_start) * 1000) if docs_retrieved_at else None
+            first_token_ms = ((first_answer_token_at - request_start) * 1000) if first_answer_token_at else None
+            docs_to_first_token_ms = (
+                (first_answer_token_at - docs_retrieved_at) * 1000
+                if docs_retrieved_at and first_answer_token_at
+                else None
+            )
+            print(
+                "[TIMING] /ask/stream "
+                f"total_ms={total_ms:.1f} "
+                f"docs_retrieved_ms={'NA' if docs_ms is None else f'{docs_ms:.1f}'} "
+                f"first_token_ms={'NA' if first_token_ms is None else f'{first_token_ms:.1f}'} "
+                f"docs_to_first_token_ms={'NA' if docs_to_first_token_ms is None else f'{docs_to_first_token_ms:.1f}'} "
+                f"question_len={len(user_input)} "
+                f"retrieved_docs={len(context_docs)}"
+            )
+
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
@@ -149,38 +176,3 @@ if __name__ == "__main__":
     # Entry point for local development. In production, Railway runs uvicorn
     # directly via the startCommand in railway.json.
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-
-
-# --- Commented-out: session-based multi-turn conversation version of /ask ---
-# This version tracks conversation history per session_id and passes it to
-# the chain. Requires adding a {history} variable to custom_prompt in query.py.
-#
-# @app.post("/ask")
-# async def ask_question(request: Request):
-#     data = await request.json()
-#     print("Received data:", data)
-#     user_input = data.get("question", "")
-#     session_id = data.get("session_id", "default")  # session/user id from frontend
-#
-#     # Get or create history for this session
-#     history = user_histories.setdefault(session_id, [])
-#     history.append({"role": "user", "content": user_input})
-#
-#     # Format history as plain text for prompt injection
-#     history_text = build_history_text(history)
-#
-#     # Call the chain with history included
-#     result = retrieval_chain.invoke({
-#         "history": history_text,
-#         "input": user_input,
-#         "context": ""  # let the chain handle context retrieval
-#     })
-#
-#     history.append({"role": "assistant", "content": result["answer"]})
-#
-#     return {
-#         "answer": result["answer"],
-#         "context": result["context"]
-#     }

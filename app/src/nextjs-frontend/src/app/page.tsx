@@ -29,6 +29,13 @@ export default function Home() {
   const [streamStatus, setStreamStatus] = useState<string>("");
   const [statusMode, setStatusMode] = useState<"idle" | "searching" | "compiling">("idle");
   const [statusIndex, setStatusIndex] = useState(0);
+  const [pendingSourceJump, setPendingSourceJump] = useState<{ msgIndex: number; sourceListIndex: number } | null>(null);
+  const [footnotePreview, setFootnotePreview] = useState<{
+    x: number;
+    y: number;
+    sourceName: string;
+    snippet: string;
+  } | null>(null);
 
   // Sync chatHistory changes back to the active chat
   useEffect(() => {
@@ -89,32 +96,32 @@ export default function Home() {
     {
       id: 3,
       icon: "document-review",
-      text: "I want to start a fur-free campaign in my city to push for a local ban on fur sales. What should I know before getting started? Are there any pitfalls or lessons from previous campaigns I should be aware of?"
+      text: "I want to push for a local ban on fur sales in my city. Are there any pitfalls or lessons from previous campaigns I should be aware of?"
     },
     {
       id: 4,
       icon: "roadmap",
-      text: "placeholder text"
+      text: "How can we better communicate the link between biodiversity loss and animal welfare?"
     },
     {
       id: 5,
       icon: "gavel-search",
-      text: "placeholder text"
+      text: "What metrics should we track for our Meatless Mondays campaign?"
     },
     {
       id: 6,
       icon: "group-mobilize",
-      text: "placeholder text"
+      text: "What does the research say about consumer attitudes toward veganism?"
     },
     {
       id: 7,
       icon: "calendar-clock",
-      text: "placeholder text"
+      text: "What are the strongest counterarguments to invertebrate protection, and how do we respond?"
     },
     {
       id: 8,
       icon: "bar-chart-forecast",
-      text: "placeholder text"
+      text: "What are effective messaging strategies for corporate cage-free campaigns?"
     }
   ];
 
@@ -268,29 +275,71 @@ export default function Home() {
     await submitQuestion(promptText);
   };
 
-  const sourceUsedInAnswer = (answer: string, doc: any) => {
-    const answerLower = (answer || "").toLowerCase();
-    const sourceName = (doc?.metadata?.source_name || "").toLowerCase().trim();
-    const sourceUrl = (doc?.metadata?.source_url || "").toLowerCase().trim();
+  const getSourceKey = (doc: any) =>
+    (doc?.metadata?.source_url || doc?.metadata?.source_name || "unknown").toLowerCase();
 
-    if (!answerLower) return false;
-    if (sourceName && answerLower.includes(sourceName)) return true;
-    if (sourceUrl && answerLower.includes(sourceUrl)) return true;
-    return false;
+  const getDisplaySources = (context: any[]) => {
+    const byName = new Map<string, any>();
+    for (const doc of context || []) {
+      const name = (doc?.metadata?.source_name || "Untitled Document").toLowerCase();
+      const current = byName.get(name);
+      const nextIsWeb = (doc?.metadata?.source_url || "").startsWith("http");
+      const currentIsWeb = (current?.metadata?.source_url || "").startsWith("http");
+
+      // Prefer web source when titles overlap.
+      if (!current || (nextIsWeb && !currentIsWeb)) {
+        byName.set(name, doc);
+      }
+    }
+    return Array.from(byName.values());
   };
 
-  const getUsedSources = (answer: string, context: any[]) => {
-    const uniqueDocs = Array.from(
-      new Map(
-        (context || []).map((doc: any) => [
-          doc.metadata?.source_name || "Untitled Document",
-          doc
-        ])
-      ).values()
-    ) as any[];
-
-    return uniqueDocs.filter((doc: any) => sourceUsedInAnswer(answer, doc));
+  const jumpToSource = (msgIndex: number, sourceListIndex: number) => {
+    setShowContext(msgIndex);
+    setPendingSourceJump({ msgIndex, sourceListIndex });
   };
+
+  const showFootnotePreview = (evt: React.MouseEvent<HTMLButtonElement>, doc: any) => {
+    const rect = evt.currentTarget.getBoundingClientRect();
+    const sourceName = doc?.metadata?.source_name || "Untitled";
+    const raw = (doc?.page_content || "").replace(/\s+/g, " ").trim();
+    const snippet = raw.length > 240 ? `${raw.slice(0, 240)}...` : raw;
+    setFootnotePreview({
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollY + 8,
+      sourceName,
+      snippet,
+    });
+  };
+
+  const hideFootnotePreview = () => setFootnotePreview(null);
+
+  useEffect(() => {
+    if (!pendingSourceJump) return;
+    const { msgIndex, sourceListIndex } = pendingSourceJump;
+    if (showContext !== msgIndex) return;
+
+    const targetId = `source-ref-${msgIndex}-${sourceListIndex}`;
+    let attempts = 0;
+    const maxAttempts = 12;
+
+    const tryScroll = () => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        setPendingSourceJump(null);
+        return;
+      }
+      attempts += 1;
+      if (attempts < maxAttempts) {
+        window.requestAnimationFrame(tryScroll);
+      } else {
+        setPendingSourceJump(null);
+      }
+    };
+
+    window.requestAnimationFrame(tryScroll);
+  }, [pendingSourceJump, showContext]);
 
 
   return (
@@ -359,6 +408,12 @@ export default function Home() {
                       ) : (
                         <div>
                           {(() => {
+                            const docsToDisplay = getDisplaySources(msg.context || []);
+                            const footnoteByKey = new Map<string, number>();
+                            docsToDisplay.forEach((doc: any, i: number) => {
+                              footnoteByKey.set(getSourceKey(doc), i + 1);
+                            });
+
                             console.log('Raw answer:', msg.answer);
                             return (                              
                               <ReactMarkdown remarkPlugins={[remarkGfm]}
@@ -399,14 +454,35 @@ export default function Home() {
                                 ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-4 ml-4 space-y-1" {...props} />,
                                 li: ({node, ...props}) => <li className="mb-1 [&>p]:inline" {...props} />,
                                 strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
-                                a: ({node, ...props}) => (
-                                  <a
-                                    className="text-grey-100 underline decoration-2 underline-offset-2 hover:text-blue-900"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    {...props}
-                                  />
-                                ),
+                                a: ({node, ...props}) => {
+                                  const href = (props.href || "").toLowerCase();
+                                  const sourceListIndex = docsToDisplay.findIndex((doc: any) => getSourceKey(doc) === href);
+                                  if (sourceListIndex >= 0) {
+                                    const n = footnoteByKey.get(href) || (sourceListIndex + 1);
+                                    return (
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center justify-center align-super text-xs leading-none text-blue-700 underline hover:text-blue-900"
+                                        onClick={() => jumpToSource(idx, sourceListIndex)}
+                                        onMouseEnter={(e) => showFootnotePreview(e, docsToDisplay[sourceListIndex])}
+                                        onMouseLeave={hideFootnotePreview}
+                                        aria-label={`Open source ${n}`}
+                                        title={`Source ${n}`}
+                                      >
+                                        [{n}]
+                                      </button>
+                                    );
+                                  }
+
+                                  return (
+                                    <a
+                                      className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      {...props}
+                                    />
+                                  );
+                                },
                               }}>
                               {msg.answer}
 
@@ -414,14 +490,14 @@ export default function Home() {
                             );
                           })()}
                           <div className="mt-4 pt-4 border-t text-sm text-gray-800 italic">
-                            Prepared by Perch. Please consult City Counsel before filing to confirm compliance with state pre‑emption rules and charter procedures.
+                            Prepared by Perch. The information provided is based on available documents and should not be construed as legal, financial, or professional advice. Please verify all policy citations and consult with qualified legal counsel before taking formal action.
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {msg.context && getUsedSources(msg.answer, msg.context).length > 0 && (
+                  {msg.context && msg.context.length > 0 && (
                     <div className="flex items-center gap-2 mb-2 mt-4 pl-6 max-w-3xl w-full">
                       {/* COPY */}
                       <button
@@ -462,7 +538,7 @@ export default function Home() {
                         Retrieved Research & Policy Documents
                         </h3>
                         {(() => {
-                          const docsToDisplay = getUsedSources(msg.answer, msg.context);
+                          const docsToDisplay = getDisplaySources(msg.context || []);
 
                           return (
                         <ul className="space-y-4">
@@ -470,7 +546,8 @@ export default function Home() {
                             const url = doc.metadata?.source_url || "";
                             const isUrl = url.startsWith("http"); // Check if it's a web link or a file path
                             const content = (
-                              <div className="font-bold text-gray-900">
+                              <div id={`source-ref-${idx}-${cidx}`} className="font-bold text-gray-900">
+                                <span className="mr-2">[{cidx + 1}]</span>
                                 {doc.metadata?.source_name || "Untitled"} | {doc.metadata?.source_organization || ""}
                               </div>
                             );return (
@@ -480,7 +557,7 @@ export default function Home() {
                                     href={url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                    className="text-blue-200 underline decoration-2 underline-offset-2 hover:text-blue-900"
                                   >
                                     {content}
                                   </a>
@@ -500,6 +577,16 @@ export default function Home() {
               ))}
             </div>
             <div ref={bottomRef} /> {/* scroll anchor — keeps view at bottom during streaming */}
+          </div>
+        )}
+
+        {footnotePreview && (
+          <div
+            className="fixed z-50 max-w-md rounded-md border border-gray-200 bg-white p-3 shadow-lg"
+            style={{ left: footnotePreview.x, top: footnotePreview.y }}
+          >
+            <div className="text-xs font-semibold text-gray-900">{footnotePreview.sourceName}</div>
+            <div className="mt-1 text-xs text-gray-700">{footnotePreview.snippet || "No preview available."}</div>
           </div>
         )}
 

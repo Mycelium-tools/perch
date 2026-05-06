@@ -19,7 +19,13 @@ class PineconeRetriever(BaseRetriever):
     score_threshold: float
     top_k: int
 
-    def __init__(self, pinecone_vector_store: PineconeVectorStore, score_threshold: float, top_k: int, **kwargs):
+    def __init__(
+        self,
+        pinecone_vector_store: PineconeVectorStore,
+        score_threshold: float,
+        top_k: int,
+        **kwargs
+    ):
         super().__init__(
             pinecone_vector_store=pinecone_vector_store,
             score_threshold=score_threshold,
