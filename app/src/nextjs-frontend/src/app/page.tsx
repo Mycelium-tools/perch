@@ -21,6 +21,70 @@ const GENERATING_STATUS_MESSAGES = [
   "Creating a plan...",
 ];
 
+const getApiBaseUrl = () => {
+  const localServer = "http://localhost:8000";
+  const prodServer = "https://pawlicy-gpt-production.up.railway.app";
+  return process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL
+    : process.env.NODE_ENV === "production"
+      ? prodServer
+      : localServer;
+};
+
+const resolveSourceUrl = (rawUrl: string) => {
+  const url = (rawUrl || "").trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+
+  // Map relative/local pdf paths to backend static route.
+  if (url.toLowerCase().includes(".pdf")) {
+    const rawFilename = url.split("/").pop() || "";
+    if (!rawFilename) return "";
+    let filename = rawFilename;
+    try {
+      filename = decodeURIComponent(rawFilename);
+    } catch {
+      filename = rawFilename;
+    }
+    return `${getApiBaseUrl()}/pdfs/${encodeURIComponent(filename)}`;
+  }
+
+  return "";
+};
+
+const normalizeSourceRef = (rawRef: string) => {
+  const resolved = resolveSourceUrl(rawRef) || (rawRef || "").trim();
+  if (!resolved) return "";
+  let s = resolved;
+  try {
+    s = decodeURIComponent(s);
+  } catch {
+    // keep original string when decoding fails
+  }
+  s = s.toLowerCase();
+  s = s.split("#", 1)[0].split("?", 1)[0];
+  s = s.replace(/\/+$/, "");
+  return s;
+};
+
+const sourceTailKey = (rawRef: string) => {
+  const n = normalizeSourceRef(rawRef);
+  if (!n) return "";
+  const tail = n.split("/").pop() || n;
+  return tail.replace(/\.pdf$/, "");
+};
+
+const renderSnippetMarkdown = (text: string) => {
+  const raw = (text || "").replace(/\s+/g, " ").trim();
+  return raw || "No snippet available.";
+};
+
+const formatPublicationDate = (value: string) => {
+  const v = (value || "").trim();
+  if (!v || v === "1970-01-01") return "Unknown";
+  return v;
+};
+
 export default function Home() {
   const { chats, setChats, activeChatId, setActiveChatId, chatHistory, setChatHistory } = useChat();
   const [showContext, setShowContext] = useState<number | null>(null);
@@ -30,11 +94,10 @@ export default function Home() {
   const [statusMode, setStatusMode] = useState<"idle" | "searching" | "compiling">("idle");
   const [statusIndex, setStatusIndex] = useState(0);
   const [pendingSourceJump, setPendingSourceJump] = useState<{ msgIndex: number; sourceListIndex: number } | null>(null);
-  const [footnotePreview, setFootnotePreview] = useState<{
-    x: number;
-    y: number;
-    sourceName: string;
-    snippet: string;
+  const [sourceDetail, setSourceDetail] = useState<{
+    msgIndex: number;
+    sourceIndex: number;
+    doc: any;
   } | null>(null);
 
   // Sync chatHistory changes back to the active chat
@@ -195,13 +258,7 @@ export default function Home() {
     ]);
     setQuestion(""); // Clear input after submit
 
-    // if the environment variable exists, use it; otherwise, default to hardcoded local or production URL
-    const localServer = "http://localhost:8000";
-    const prodServer = "https://pawlicy-gpt-production.up.railway.app";
-
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL
-      ? process.env.NEXT_PUBLIC_API_URL
-      : process.env.NODE_ENV === 'production' ? prodServer : localServer;
+    const baseUrl = getApiBaseUrl();
 
     // Use streaming endpoint for token-by-token display
     const res = await fetch(`${baseUrl}/ask/stream`, {
@@ -242,6 +299,15 @@ export default function Home() {
               updated[updated.length - 1] = last;
               return updated;
             });
+          } else if (event.type === "replace_answer") {
+            setChatHistory((prev) => {
+              const updated = [...prev];
+              const last = { ...updated[updated.length - 1] };
+              last.answer = event.content || last.answer;
+              last.pending = false;
+              updated[updated.length - 1] = last;
+              return updated;
+            });
           } else if (event.type === "status" && event.stage === "docs_retrieved") {
             setStatusMode("compiling");
             setStatusIndex(0);
@@ -276,7 +342,7 @@ export default function Home() {
   };
 
   const getSourceKey = (doc: any) =>
-    (doc?.metadata?.source_url || doc?.metadata?.source_name || "unknown").toLowerCase();
+    normalizeSourceRef(doc?.metadata?.source_url || doc?.metadata?.source_name || "unknown");
 
   const getDisplaySources = (context: any[]) => {
     const byName = new Map<string, any>();
@@ -298,21 +364,6 @@ export default function Home() {
     setShowContext(msgIndex);
     setPendingSourceJump({ msgIndex, sourceListIndex });
   };
-
-  const showFootnotePreview = (evt: React.MouseEvent<HTMLButtonElement>, doc: any) => {
-    const rect = evt.currentTarget.getBoundingClientRect();
-    const sourceName = doc?.metadata?.source_name || "Untitled";
-    const raw = (doc?.page_content || "").replace(/\s+/g, " ").trim();
-    const snippet = raw.length > 240 ? `${raw.slice(0, 240)}...` : raw;
-    setFootnotePreview({
-      x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollY + 8,
-      sourceName,
-      snippet,
-    });
-  };
-
-  const hideFootnotePreview = () => setFootnotePreview(null);
 
   useEffect(() => {
     if (!pendingSourceJump) return;
@@ -411,7 +462,10 @@ export default function Home() {
                             const docsToDisplay = getDisplaySources(msg.context || []);
                             const footnoteByKey = new Map<string, number>();
                             docsToDisplay.forEach((doc: any, i: number) => {
-                              footnoteByKey.set(getSourceKey(doc), i + 1);
+                              const key = getSourceKey(doc);
+                              const tail = sourceTailKey(doc?.metadata?.source_url || doc?.metadata?.source_name || "");
+                              if (key) footnoteByKey.set(key, i + 1);
+                              if (tail) footnoteByKey.set(tail, i + 1);
                             });
 
                             console.log('Raw answer:', msg.answer);
@@ -455,17 +509,28 @@ export default function Home() {
                                 li: ({node, ...props}) => <li className="mb-1 [&>p]:inline" {...props} />,
                                 strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
                                 a: ({node, ...props}) => {
-                                  const href = (props.href || "").toLowerCase();
-                                  const sourceListIndex = docsToDisplay.findIndex((doc: any) => getSourceKey(doc) === href);
+                                  const rawHref = props.href || "";
+                                  const href = normalizeSourceRef(rawHref);
+                                  const hrefTail = sourceTailKey(rawHref);
+                                  const sourceListIndex = docsToDisplay.findIndex((doc: any) => {
+                                    const docKey = getSourceKey(doc);
+                                    const docTail = sourceTailKey(doc?.metadata?.source_url || doc?.metadata?.source_name || "");
+                                    return (href && docKey === href) || (hrefTail && docTail === hrefTail);
+                                  });
                                   if (sourceListIndex >= 0) {
-                                    const n = footnoteByKey.get(href) || (sourceListIndex + 1);
+                                    const n = footnoteByKey.get(href) || footnoteByKey.get(hrefTail) || (sourceListIndex + 1);
                                     return (
                                       <button
                                         type="button"
                                         className="inline-flex items-center justify-center align-super text-xs leading-none text-blue-700 underline hover:text-blue-900"
-                                        onClick={() => jumpToSource(idx, sourceListIndex)}
-                                        onMouseEnter={(e) => showFootnotePreview(e, docsToDisplay[sourceListIndex])}
-                                        onMouseLeave={hideFootnotePreview}
+                                        onClick={() => {
+                                          setShowContext(idx);
+                                          setSourceDetail({
+                                            msgIndex: idx,
+                                            sourceIndex: sourceListIndex,
+                                            doc: docsToDisplay[sourceListIndex],
+                                          });
+                                        }}
                                         aria-label={`Open source ${n}`}
                                         title={`Source ${n}`}
                                       >
@@ -480,6 +545,7 @@ export default function Home() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       {...props}
+                                      href={resolveSourceUrl(rawHref) || rawHref}
                                     />
                                   );
                                 },
@@ -543,8 +609,8 @@ export default function Home() {
                           return (
                         <ul className="space-y-4">
                           {docsToDisplay.map((doc: any, cidx: number) => {
-                            const url = doc.metadata?.source_url || "";
-                            const isUrl = url.startsWith("http"); // Check if it's a web link or a file path
+                            const url = resolveSourceUrl(doc.metadata?.source_url || "");
+                            const isUrl = Boolean(url);
                             const content = (
                               <div id={`source-ref-${idx}-${cidx}`} className="font-bold text-gray-900">
                                 <span className="mr-2">[{cidx + 1}]</span>
@@ -557,7 +623,7 @@ export default function Home() {
                                     href={url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-200 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                    className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
                                   >
                                     {content}
                                   </a>
@@ -580,13 +646,62 @@ export default function Home() {
           </div>
         )}
 
-        {footnotePreview && (
-          <div
-            className="fixed z-50 max-w-md rounded-md border border-gray-200 bg-white p-3 shadow-lg"
-            style={{ left: footnotePreview.x, top: footnotePreview.y }}
-          >
-            <div className="text-xs font-semibold text-gray-900">{footnotePreview.sourceName}</div>
-            <div className="mt-1 text-xs text-gray-700">{footnotePreview.snippet || "No preview available."}</div>
+        {sourceDetail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+            <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
+              <div className="mb-2 flex items-start justify-between gap-4">
+                <div className="text-sm font-semibold text-gray-900">
+                  [{sourceDetail.sourceIndex + 1}] {sourceDetail.doc?.metadata?.source_name || "Untitled"}
+                </div>
+                <button
+                  type="button"
+                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                  onClick={() => setSourceDetail(null)}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="space-y-1 text-xs text-gray-700">
+                <div><span className="font-semibold">Organization:</span> {sourceDetail.doc?.metadata?.source_organization || "Unknown"}</div>
+                <div><span className="font-semibold">Publication date:</span> {formatPublicationDate(sourceDetail.doc?.metadata?.publication_date || "")}</div>
+                {(sourceDetail.doc?.metadata?.page_number || 0) > 0 && (
+                  <div><span className="font-semibold">Page:</span> {sourceDetail.doc?.metadata?.page_number}</div>
+                )}
+                <div className="break-all">
+                  <span className="font-semibold">URL:</span>{" "}
+                  {resolveSourceUrl(sourceDetail.doc?.metadata?.source_url || "") ? (
+                    <a
+                      href={resolveSourceUrl(sourceDetail.doc?.metadata?.source_url || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                    >
+                      URL
+                    </a>
+                  ) : (
+                    sourceDetail.doc?.metadata?.source_url || "N/A"
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-800">
+                <ReactMarkdown
+                  components={{
+                    a: ({node, ...props}) => (
+                      <a
+                        {...props}
+                        href={resolveSourceUrl(String(props.href || "")) || String(props.href || "")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                      />
+                    ),
+                    p: ({node, ...props}) => <p className="mb-1" {...props} />,
+                  }}
+                >
+                  {renderSnippetMarkdown(sourceDetail.doc?.page_content || "")}
+                </ReactMarkdown>
+              </div>
+            </div>
           </div>
         )}
 

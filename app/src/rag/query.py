@@ -45,8 +45,8 @@ perch_system_prompt = (
         For strategies, include a brief 'Constraint Analysis' section. Specifically address potential political, financial, or cultural barriers unique to the animal advocacy space and suggest one mitigation tactic for each.
     4. Sources:
         Every substantive factual claim (data, numbers, quotes) MUST include an inline citation.
-        If a source URL exists, citation format MUST be a markdown hyperlink: ([Source Organization, Year](https://...)).
-        If URL is missing, use plain-text citation: (Source Organization, Year).
+        Citation format MUST be a markdown hyperlink: ([Source Organization, Year](https://...)).
+        Include page numbers in citations ONLY when PAGE_NUMBER > 0: ([Source Organization, Year, p. X](https://...))
         Do not include a standalone Sources or Citations section in your response.
         Never mention 'the documents', 'the context provided,' or imply that the user provided the context.
         If no relevant sources exist for your answer, explicitly acknowledge the gap before giving best-effort guidance.
@@ -107,8 +107,22 @@ docsearch = PineconeVectorStore(
 
 # Format documents into a string containing source name and URL that the LLM can easily parse
 document_prompt = PromptTemplate(
-    input_variables=["page_content", "source_name", "source_url"],
-    template="--- SOURCE: {source_name} ---\nURL: {source_url}\nCONTENT: {page_content}\n"
+    input_variables=[
+        "page_content",
+        "source_name",
+        "source_organization",
+        "source_url",
+        "publication_year",
+        "page_number",
+    ],
+    template=(
+        "--- SOURCE: {source_name} ---\n"
+        "SOURCE_ORG: {source_organization}\n"
+        "YEAR: {publication_year}\n"
+        "URL: {source_url}\n"
+        "PAGE_NUMBER: {page_number}\n"
+        "CONTENT: {page_content}\n"
+    ),
 )
 
 # OpenAI LLM setup
