@@ -4,6 +4,7 @@
 # Provides: metadata building, file utils
 
 import hashlib
+import re
 from pathlib import Path
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from taxonomies import ChunkMetadata
@@ -32,20 +33,24 @@ def build_chunk_metadata_validated(file_path_or_url, chunk_index, chunk, meta, s
     Creates a validated metadata object using the Pydantic ChunkMetadata schema.
     """
     # 1. Generate the hash for deduplication
-    source_content = chunk.page_content.encode('utf-8')
+    source_content = normalize_chunk_text_for_hash(chunk.page_content).encode('utf-8')
     source_hash = hashlib.sha256(source_content).hexdigest()
     
     # 2. Map data_sources.json 'meta' to our Schema
     # This assumes your data_sources.json entries match your Enum names
+    raw_page = chunk.metadata.get("page")
+    page_number = (int(raw_page) + 1) if raw_page is not None else 0
+
     validated_meta = ChunkMetadata(
         source_name=meta.get("name", "Unknown"),
         source_organization=meta.get("organization", "N/A"),
         primary_focus=meta.get("primary_focus"), # Validates against Enum
         doc_type=meta.get("doc_type"),           # Validates against Enum
-        source_url=file_path_or_url,
+        source_url=meta.get("url", file_path_or_url),
         section=section,
         source_hash=source_hash,
         chunk_index=chunk_index,
+        page_number=page_number,
         chunk_id=f"{source_hash}_{chunk_index}",
         raw_date=meta.get("publication_date", "1970-01-01"),
         tags=meta.get("tags", []) # Triggers auto-normalization to snake_case
@@ -53,6 +58,43 @@ def build_chunk_metadata_validated(file_path_or_url, chunk_index, chunk, meta, s
     
     # Return as a Pinecone-compatible dictionary
     return validated_meta.dict()
+
+
+def normalize_chunk_text_for_hash(text: str) -> str:
+    """
+    Normalize unstable web tokens to prevent needless hash churn across re-scrapes.
+    """
+    normalized = text or ""
+
+    # Cloudflare email protection links/attributes (multiple observed variants).
+    normalized = re.sub(
+        r"/cdn-cgi/l/email-protection(?:#[0-9a-fA-F]+)?",
+        "/cdn-cgi/l/email-protection#<redacted>",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"(?:\?|&)__cf_email__=[0-9a-fA-F]+",
+        "",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"data-cfemail=\"[0-9a-fA-F]+\"",
+        "data-cfemail=\"<redacted>\"",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"/l/email-protection#([0-9a-fA-F]{6,})",
+        "/l/email-protection#<redacted>",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+
+    # Collapse whitespace noise.
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized
 
 
 def build_chunk_metadata(file_path_or_url, chunk_index, chunk, meta, ingestion_date):
@@ -79,6 +121,7 @@ def build_chunk_metadata(file_path_or_url, chunk_index, chunk, meta, ingestion_d
         Dictionary of metadata to attach to chunk in Pinecone
     """
     source_hash = get_source_hash(file_path_or_url)
+    raw_page = chunk.metadata.get("page")
     return {
         # SOURCE IDENTIFICATION (for attribution & filtering)
         "source_name": meta.get('name') or Path(file_path_or_url).stem,
@@ -89,7 +132,7 @@ def build_chunk_metadata(file_path_or_url, chunk_index, chunk, meta, ingestion_d
         
         # CHUNK POSITIONING (for context & reconstruction)
         "chunk_index": chunk_index,
-        "page_number": chunk.metadata.get("page", 0) + 1,
+        "page_number": (int(raw_page) + 1) if raw_page is not None else 0,
         
         # DOCUMENT CLASSIFICATION (for semantic filtering)
         "doc_type": meta.get("doc_type", ""),

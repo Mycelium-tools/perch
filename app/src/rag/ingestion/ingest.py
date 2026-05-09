@@ -105,6 +105,7 @@ def clean_docs(docs):
         
     return docs
 
+
 def export_chunks_to_json(chunks, filename="chunk_context_audit.json"):
     """
     Exports LangChain Document objects to a readable JSON format for debugging.
@@ -327,14 +328,15 @@ def ingest_web(entry):
                 current_url = page.get('url')
                 markdown_text = page['markdown']
                 page_title = page.get('title', 'Untitled')
+                page_publication_date = page.get('publication_date', '')
                 # Add page title as the document name in the metadata
                 existing_meta = entry.get('meta', {})
                 updated_meta = {
                     "name": existing_meta.get("name", page_title),
                     "url": current_url,
+                    "publication_date": existing_meta.get("publication_date") or page_publication_date,
                     **existing_meta 
                 }
-
                 if not markdown_text:
                     continue
 
