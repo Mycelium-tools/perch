@@ -38,6 +38,7 @@ class ChunkMetadata(BaseModel):
     
     source_hash: str 
     chunk_index: int
+    page_number: int = 0
     chunk_id: str     
     
     # Keeping raw_date as a string/int to avoid nested dictionary errors

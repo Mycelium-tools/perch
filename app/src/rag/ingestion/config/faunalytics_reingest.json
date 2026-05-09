@@ -1,0 +1,126 @@
+[
+  {
+    "type": "web",
+    "config": {
+      "is_crawl": true,
+      "skip_ingesting_seed": true,
+      "max_depth": 1,
+      "max_threads": 3,
+      "container_selector": "article"
+    },
+    "source": [
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2026",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2025",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2024",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2023",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2022",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2021",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2020",
+      "https://faunalytics.org/completed-projects/?_year_dropdown=2019"
+    ],
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "primary_focus": "effective_advocacy",
+      "doc_type": "article",
+      "tags": [
+        "animal advocacy",
+        "data analysis",
+        "impact studies"
+      ]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "../pdfs/Industry Costs For Chicken, Egg, And Fish Products In The United States, Brazil, And China.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "primary_focus": "farmed_animals",
+      "publication_date": "2025-09-25",
+      "doc_type": "report",
+      "tags": [
+        "china",
+        "fish",
+        "chicken",
+        "eggs",
+        "animal agriculture"
+      ]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "../pdfs/Report - Research and Data Phase II - China and Southeast Asia.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "primary_focus": "effective_advocacy",
+      "publication_date": "2025-05-20",
+      "doc_type": "report",
+      "tags": [
+        "china",
+        "southeast asia",
+        "global south",
+        "farmed animals",
+        "animal advocacy"
+      ]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "../pdfs/Chinese Consumers' Attitudes Toward Animal Welfare.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "primary_focus": "effective_advocacy",
+      "publication_date": "2023-01-02",
+      "doc_type": "report",
+      "tags": [
+        "china",
+        "messaging",
+        "attitudes and beliefs",
+        "consumers",
+        "farmed animals",
+        "animal welfare"
+      ]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "../pdfs/Exploring Gen Z's Attitudes Towards Animals And The Environment.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics",
+      "primary_focus": "effective_advocacy",
+      "publication_date": "2025-02-25",
+      "doc_type": "report",
+      "tags": [
+        "survey",
+        "china",
+        "gen z",
+        "animals and the environment",
+        "attitudes and beliefs",
+        "animal advocacy"
+      ]
+    }
+  },
+  {
+    "type": "pdf",
+    "source": "../pdfs/Chickens-and-Fishes-China.pdf",
+    "namespace": "animal_policies",
+    "meta": {
+      "organization": "Faunalytics, Mercy for Animals",
+      "primary_focus": "effective_advocacy",
+      "publication_date": "2022-01-26",
+      "doc_type": "academic_paper",
+      "tags": [
+        "fish",
+        "chicken",
+        "china",
+        "attitudes and beliefs",
+        "farmed animals",
+        "animal advocacy"
+      ]
+    }
+  }
+]

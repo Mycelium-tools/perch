@@ -27,7 +27,7 @@ from langchain_core.documents import Document
 
 # Local utility imports
 from chunking_utils import splitter, build_chunk_metadata_validated, get_full_path
-from parsing_utils import parse_pdf_with_sections
+from parsing_utils import parse_pdf_with_sections, detect_pdf_publication_date
 from scraper import WebScraper
 
 # Load environment variables
@@ -104,6 +104,7 @@ def clean_docs(docs):
         doc.page_content = text.strip()
         
     return docs
+
 
 def export_chunks_to_json(chunks, filename="chunk_context_audit.json"):
     """
@@ -234,6 +235,13 @@ def ingest_pdf(entry, json_dir=None):
     if not file_path or not full_path.exists():
         print(f"⚠️  File not found: {full_path}")
         return
+
+    # Best-effort publication date detection when missing in config.
+    if not meta.get("publication_date"):
+        detected_date = detect_pdf_publication_date(str(full_path))
+        if detected_date:
+            meta["publication_date"] = detected_date
+            print(f"🗓️  Detected publication_date: {detected_date}")
     
     display_name = meta.get('name') or full_path.stem
     print(f"\n{'─'*70}\n[PDF] {display_name}\n{'─'*70}")
@@ -327,14 +335,15 @@ def ingest_web(entry):
                 current_url = page.get('url')
                 markdown_text = page['markdown']
                 page_title = page.get('title', 'Untitled')
+                page_publication_date = page.get('publication_date', '')
                 # Add page title as the document name in the metadata
                 existing_meta = entry.get('meta', {})
                 updated_meta = {
                     "name": existing_meta.get("name", page_title),
                     "url": current_url,
+                    "publication_date": existing_meta.get("publication_date") or page_publication_date,
                     **existing_meta 
                 }
-
                 if not markdown_text:
                     continue
 

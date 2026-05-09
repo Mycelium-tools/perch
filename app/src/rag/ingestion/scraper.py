@@ -1,4 +1,5 @@
 import time
+import json
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
@@ -106,8 +107,71 @@ class WebScraper:
         cleaned_markdown = "\n".join(line.rstrip() for line in markdown_text.split('\n') if line.strip())
 
         title = (soup.title.string if soup.title else url).strip()
+        publication_date = self._extract_publication_date(soup)
         print(f"   Found Page Title: {title}")
-        return {"url": url, "title": title, "markdown": cleaned_markdown}, links
+        return {
+            "url": url,
+            "title": title,
+            "markdown": cleaned_markdown,
+            "publication_date": publication_date,
+        }, links
+
+    def _extract_publication_date(self, soup):
+        """Best-effort extraction of page publication date."""
+        meta_candidates = [
+            ("meta", {"property": "article:published_time"}),
+            ("meta", {"name": "article:published_time"}),
+            ("meta", {"property": "og:published_time"}),
+            ("meta", {"name": "pubdate"}),
+            ("meta", {"name": "publishdate"}),
+            ("meta", {"name": "publication_date"}),
+            ("meta", {"name": "date"}),
+            ("meta", {"itemprop": "datePublished"}),
+        ]
+        for tag_name, attrs in meta_candidates:
+            node = soup.find(tag_name, attrs=attrs)
+            if node and node.get("content"):
+                return node.get("content").strip()
+
+        time_node = soup.find("time")
+        if time_node:
+            dt = (time_node.get("datetime") or time_node.get_text() or "").strip()
+            if dt:
+                return dt
+
+        # JSON-LD fallback
+        for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+            raw = (script.string or script.get_text() or "").strip()
+            if not raw:
+                continue
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                continue
+            found = self._find_date_in_jsonld(parsed)
+            if found:
+                return found
+
+        return ""
+
+    def _find_date_in_jsonld(self, payload):
+        """Recursively find a publication-like date field in JSON-LD."""
+        keys = {"datePublished", "dateCreated", "uploadDate", "dateModified"}
+        if isinstance(payload, dict):
+            for k in keys:
+                v = payload.get(k)
+                if isinstance(v, str) and v.strip():
+                    return v.strip()
+            for v in payload.values():
+                found = self._find_date_in_jsonld(v)
+                if found:
+                    return found
+        elif isinstance(payload, list):
+            for item in payload:
+                found = self._find_date_in_jsonld(item)
+                if found:
+                    return found
+        return ""
 
     # -------------------
     # Public Methods
