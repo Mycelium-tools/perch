@@ -27,7 +27,7 @@ from langchain_core.documents import Document
 
 # Local utility imports
 from chunking_utils import splitter, build_chunk_metadata_validated, get_full_path
-from parsing_utils import parse_pdf_with_sections
+from parsing_utils import parse_pdf_with_sections, detect_pdf_publication_date
 from scraper import WebScraper
 
 # Load environment variables
@@ -235,6 +235,13 @@ def ingest_pdf(entry, json_dir=None):
     if not file_path or not full_path.exists():
         print(f"⚠️  File not found: {full_path}")
         return
+
+    # Best-effort publication date detection when missing in config.
+    if not meta.get("publication_date"):
+        detected_date = detect_pdf_publication_date(str(full_path))
+        if detected_date:
+            meta["publication_date"] = detected_date
+            print(f"🗓️  Detected publication_date: {detected_date}")
     
     display_name = meta.get('name') or full_path.stem
     print(f"\n{'─'*70}\n[PDF] {display_name}\n{'─'*70}")

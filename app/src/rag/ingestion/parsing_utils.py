@@ -1,6 +1,7 @@
 # utils/parsing.py
 import pdfplumber
 import fitz # pymupdf
+import re
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 
 def parse_pdf_with_sections(file_path):
@@ -94,6 +95,72 @@ def get_safe_pdf_info(file_path):
             "doc_title_internal": str(info.get("Title", ""))[:100],
             "doc_author": str(info.get("Author", ""))[:100],
         }
+
+def detect_pdf_publication_date(file_path: str) -> str:
+    """
+    Best-effort publication date detection for PDFs.
+    Returns ISO-like YYYY-MM-DD when possible; otherwise empty string.
+    Priority:
+      1) PDF metadata dates (CreationDate/ModDate)
+      2) First-page text date patterns
+      3) Filename date hints
+    """
+    # 1) Metadata date candidates
+    try:
+        with pdfplumber.open(file_path) as pdf:
+            meta = pdf.metadata or {}
+            for k in ("CreationDate", "ModDate", "Date", "Creationdate", "Moddate"):
+                v = meta.get(k)
+                parsed = _parse_pdf_date_value(str(v) if v else "")
+                if parsed:
+                    return parsed
+            # 2) First-page text fallback
+            if pdf.pages:
+                text = pdf.pages[0].extract_text() or ""
+                parsed = _parse_date_from_text(text)
+                if parsed:
+                    return parsed
+    except Exception:
+        pass
+
+    # 3) Filename hints
+    parsed = _parse_date_from_text(file_path)
+    return parsed or ""
+
+def _parse_pdf_date_value(raw: str) -> str:
+    """
+    Parse PDF metadata date formats like:
+    D:20240501123000Z or 2024-05-01
+    """
+    if not raw:
+        return ""
+    s = raw.strip()
+    m = re.search(r"D:(\d{4})(\d{2})(\d{2})", s)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    return _parse_date_from_text(s)
+
+def _parse_date_from_text(text: str) -> str:
+    if not text:
+        return ""
+    # ISO-ish dates first
+    m = re.search(r"\b(19|20)\d{2}[-/](0[1-9]|1[0-2])[-/](0[1-9]|[12]\d|3[01])\b", text)
+    if m:
+        d = m.group(0).replace("/", "-")
+        return d
+    # Month name + year, normalize to first day of month
+    month_map = {
+        "january":"01","february":"02","march":"03","april":"04","may":"05","june":"06",
+        "july":"07","august":"08","september":"09","october":"10","november":"11","december":"12"
+    }
+    m = re.search(r"\b(" + "|".join(month_map.keys()) + r")\s+((?:19|20)\d{2})\b", text.lower())
+    if m:
+        return f"{m.group(2)}-{month_map[m.group(1)]}-01"
+    # Year only
+    m = re.search(r"\b((?:19|20)\d{2})\b", text)
+    if m:
+        return f"{m.group(1)}-01-01"
+    return ""
         
 def _extract_headings_from_toc(file_path):
     """Extracts structural bookmarks from the PDF metadata."""
