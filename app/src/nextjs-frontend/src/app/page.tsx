@@ -85,6 +85,14 @@ const formatPublicationDate = (value: string) => {
   return v;
 };
 
+const sourceYear = (doc: any) => {
+  const publicationYear = String(doc?.metadata?.publication_year || "").trim();
+  if (/^\d{4}$/.test(publicationYear)) return publicationYear;
+  const publicationDate = formatPublicationDate(String(doc?.metadata?.publication_date || "").trim());
+  if (/^\d{4}/.test(publicationDate)) return publicationDate.slice(0, 4);
+  return "n.d.";
+};
+
 export default function Home() {
   const { chats, setChats, activeChatId, setActiveChatId, chatHistory, setChatHistory } = useChat();
   const [showContext, setShowContext] = useState<number | null>(null);
@@ -98,6 +106,13 @@ export default function Home() {
     msgIndex: number;
     sourceIndex: number;
     doc: any;
+  } | null>(null);
+  const [footnotePreview, setFootnotePreview] = useState<{
+    x: number;
+    y: number;
+    org: string;
+    year: string;
+    title: string;
   } | null>(null);
 
   // Sync chatHistory changes back to the active chat
@@ -209,6 +224,7 @@ export default function Home() {
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setAutoScrollEnabled(distanceFromBottom < 80);
+    if (footnotePreview) setFootnotePreview(null);
   };
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -276,6 +292,30 @@ export default function Home() {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let pendingText = "";
+    let flushTimer: number | null = null;
+
+    const flushPendingText = () => {
+      if (!pendingText) return;
+      const textToAppend = pendingText;
+      pendingText = "";
+      setChatHistory((prev) => {
+        const updated = [...prev];
+        const last = { ...updated[updated.length - 1] };
+        last.answer = last.pending ? textToAppend : last.answer + textToAppend;
+        last.pending = false;
+        updated[updated.length - 1] = last;
+        return updated;
+      });
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimer !== null) return;
+      flushTimer = window.setTimeout(() => {
+        flushTimer = null;
+        flushPendingText();
+      }, 75);
+    };
 
     try {
       while (true) {
@@ -290,16 +330,16 @@ export default function Home() {
           const event = JSON.parse(line.slice(6));
 
           if (event.type === "text") {
-            // Append each token; replace "Thinking..." on first chunk
-            setChatHistory((prev) => {
-              const updated = [...prev];
-              const last = { ...updated[updated.length - 1] };
-              last.answer = last.pending ? event.content : last.answer + event.content;
-              last.pending = false;
-              updated[updated.length - 1] = last;
-              return updated;
-            });
+            // Buffer token updates so the UI remains clickable during streaming.
+            pendingText += event.content;
+            scheduleFlush();
           } else if (event.type === "replace_answer") {
+            // Ensure buffered stream text is applied before final replacement.
+            if (flushTimer !== null) {
+              window.clearTimeout(flushTimer);
+              flushTimer = null;
+            }
+            flushPendingText();
             setChatHistory((prev) => {
               const updated = [...prev];
               const last = { ...updated[updated.length - 1] };
@@ -326,6 +366,11 @@ export default function Home() {
         }
       }
     } finally {
+      if (flushTimer !== null) {
+        window.clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      flushPendingText();
       setStatusMode("idle");
       setStreamStatus("");
     }
@@ -391,6 +436,12 @@ export default function Home() {
 
     window.requestAnimationFrame(tryScroll);
   }, [pendingSourceJump, showContext]);
+
+  useEffect(() => {
+    const onWindowScroll = () => setFootnotePreview(null);
+    window.addEventListener("scroll", onWindowScroll, true);
+    return () => window.removeEventListener("scroll", onWindowScroll, true);
+  }, []);
 
 
   return (
@@ -519,11 +570,27 @@ export default function Home() {
                                   });
                                   if (sourceListIndex >= 0) {
                                     const n = footnoteByKey.get(href) || footnoteByKey.get(hrefTail) || (sourceListIndex + 1);
+                                    const sourceDoc = docsToDisplay[sourceListIndex];
+                                    const org = String(sourceDoc?.metadata?.source_organization || "Unknown").trim() || "Unknown";
+                                    const year = sourceYear(sourceDoc);
+                                    const title = String(sourceDoc?.metadata?.source_name || "Untitled").trim() || "Untitled";
                                     return (
                                       <button
                                         type="button"
                                         className="inline-flex items-center justify-center align-super text-xs leading-none text-blue-700 underline hover:text-blue-900"
+                                        onMouseEnter={(e) => {
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setFootnotePreview({
+                                            x: rect.left + rect.width / 2,
+                                            y: rect.top - 8,
+                                            org,
+                                            year,
+                                            title,
+                                          });
+                                        }}
+                                        onMouseLeave={() => setFootnotePreview(null)}
                                         onClick={() => {
+                                          setFootnotePreview(null);
                                           setShowContext(idx);
                                           setSourceDetail({
                                             msgIndex: idx,
@@ -532,7 +599,7 @@ export default function Home() {
                                           });
                                         }}
                                         aria-label={`Open source ${n}`}
-                                        title={`Source ${n}`}
+                                        title={`${org}, ${year} - ${title}`}
                                       >
                                         [{n}]
                                       </button>
@@ -771,6 +838,15 @@ export default function Home() {
             <Copy className="w-4 h-4" />
             <span className="text-sm font-medium">Copied to clipboard!</span>
           </div>
+        </div>
+      )}
+
+      {footnotePreview && (
+        <div
+          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow-lg"
+          style={{ left: footnotePreview.x, top: footnotePreview.y }}
+        >
+          {footnotePreview.org}, {footnotePreview.year} - {footnotePreview.title}
         </div>
       )}
 
