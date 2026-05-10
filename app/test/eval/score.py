@@ -5,12 +5,13 @@
 #
 # Example Usage
 # 1. Run live scoring against the benchmark dataset
-#       python score.py --score
+#       python score.py --score --input-eval-id 5-08-26
 # 2. Parse the LLM justifications into a structured CSV
-#       python score.py --parse
+#       python score.py --parse --input-eval-id 5-08-26
 # 4. Score AND parse results into CSV:
-#       python score.py --score --parse
+#       python score.py --score --parse --input-eval-id 5-08-26
 
+import datetime
 import os
 import json
 import re
@@ -22,12 +23,9 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 
 # Configuration
-EVAL_ID = "4-28-26" # use eval date as its ID
+DEFAULT_EVAL_ID = datetime.datetime.now().strftime("%-m-%d-%y_%H%M")
 INPUT_DIR = 'input/'
-INPUT_FILE = INPUT_DIR + f'eval_input_{EVAL_ID}.json'
 OUTPUT_DIR = 'output/'
-EVAL_RESULTS_FILE = os.path.join(OUTPUT_DIR, f'eval_results_{EVAL_ID}.json')
-PARSED_CSV_FILE = os.path.join(OUTPUT_DIR, f'parsed_results_{EVAL_ID}.csv')
 
 RUBRIC_PROMPT = """
    You are evaluating responses from an AI system designed to help animal advocacy organizations.
@@ -90,15 +88,21 @@ RUBRIC_PROMPT = """
 def get_judge():
     return ChatOpenAI(model_name="gpt-5-mini", temperature=0.0)
 
-def run_scoring():
+def build_paths(eval_id: str):
+    input_file = INPUT_DIR + f'eval_input_{eval_id}.json'
+    eval_results_file = os.path.join(OUTPUT_DIR, f'eval_results_{eval_id}.json')
+    parsed_csv_file = os.path.join(OUTPUT_DIR, f'parsed_results_{eval_id}.csv')
+    return input_file, eval_results_file, parsed_csv_file
+
+def run_scoring(input_file: str, eval_results_file: str):
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
 
     try:
-        with open(INPUT_FILE, 'r', encoding='utf-8') as f:
+        with open(input_file, 'r', encoding='utf-8') as f:
             benchmark_data = json.load(f)
     except FileNotFoundError:
-        print(f"Error: {INPUT_FILE} not found.")
+        print(f"Error: {input_file} not found.")
         return
 
     model = get_judge()
@@ -109,18 +113,20 @@ def run_scoring():
         response = model.invoke([{"role": "user", "content": prompt}])
         
         results.append({"query": case["query"], "scores": response.content})
-        print(f"Scored: {case['query'][:50]}...")
+        mean_match = re.search(r"Mean Score:\s*([\d.]+)", response.content or "")
+        mean_display = mean_match.group(1) if mean_match else "n/a"
+        print(f"Scored: {case['query'][:50]}... (mean={mean_display})")
 
-    with open(EVAL_RESULTS_FILE, "w") as f:
+    with open(eval_results_file, "w") as f:
         json.dump(results, f, indent=2)
-    print(f"Done. Raw results saved to {EVAL_RESULTS_FILE}")
+    print(f"Done. Raw results saved to {eval_results_file}")
 
-def run_parsing():
-    if not os.path.exists(EVAL_RESULTS_FILE):
-        print(f"Error: {EVAL_RESULTS_FILE} not found. Run --score first.")
+def run_parsing(eval_results_file: str, parsed_csv_file: str):
+    if not os.path.exists(eval_results_file):
+        print(f"Error: {eval_results_file} not found. Run --score first.")
         return
 
-    with open(EVAL_RESULTS_FILE, 'r') as f:
+    with open(eval_results_file, 'r') as f:
         data = json.load(f)
 
     rows = []
@@ -147,19 +153,32 @@ def run_parsing():
             })
 
     df = pd.DataFrame(rows)
-    df.to_csv(PARSED_CSV_FILE, index=False)
-    print(f"Done. CSV saved to {PARSED_CSV_FILE}")
+    df.to_csv(parsed_csv_file, index=False)
+    print(f"Done. CSV saved to {parsed_csv_file}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LLM-as-a-Judge CLI")
     parser.add_argument("--score", action="store_true", help="Run the LLM judge on input queries")
     parser.add_argument("--parse", action="store_true", help="Parse raw JSON scores into CSV")
+    parser.add_argument(
+        "--eval-id",
+        default=DEFAULT_EVAL_ID,
+        help=f"Eval identifier used for output/result filenames (default: {DEFAULT_EVAL_ID})",
+    )
+    parser.add_argument(
+        "--input-eval-id",
+        default=None,
+        help="Optional separate eval id for the input file. If omitted, uses --eval-id.",
+    )
     
     args = parser.parse_args()
+    input_eval_id = args.input_eval_id or args.eval_id
+    input_file, _, _ = build_paths(input_eval_id)
+    _, eval_results_file, parsed_csv_file = build_paths(args.eval_id)
 
     if args.score:
-        run_scoring()
+        run_scoring(input_file, eval_results_file)
     if args.parse:
-        run_parsing()
+        run_parsing(eval_results_file, parsed_csv_file)
     if not (args.score or args.parse):
         parser.print_help()
