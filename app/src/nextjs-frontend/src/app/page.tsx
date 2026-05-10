@@ -489,7 +489,14 @@ export default function Home() {
             className="flex-1 overflow-y-auto px-4 pb-60"
           >
             <div className="flex flex-col gap-6 max-w-5xl mx-auto">
-              {chatHistory.map((msg, idx) => (
+              {chatHistory.map((msg, idx) => {
+                const isLatestMsg = idx === chatHistory.length - 1;
+                const isActivelyStreamingMsg = isLatestMsg && statusMode !== "idle";
+                const effectiveContext = (msg.context && msg.context.length > 0)
+                  ? msg.context
+                  : (isActivelyStreamingMsg ? (context || []) : []);
+                const hasSources = effectiveContext.length > 0;
+                return (
                 <div key={idx} ref={idx === chatHistory.length - 1 ? lastMsgRef : null}>
                   {/* User query bubble */}
                   <div className="flex justify-end my-8">
@@ -510,9 +517,12 @@ export default function Home() {
                       ) : (
                         <div>
                           {(() => {
-                            const docsToDisplay = getDisplaySources(msg.context || []);
+                            // Use full retrieved context for citation matching so footnote links stay stable
+                            // even when display sources are de-duplicated.
+                            const citationDocs = effectiveContext || [];
+                            const docsToDisplay = getDisplaySources(effectiveContext || []);
                             const footnoteByKey = new Map<string, number>();
-                            docsToDisplay.forEach((doc: any, i: number) => {
+                            citationDocs.forEach((doc: any, i: number) => {
                               const key = getSourceKey(doc);
                               const tail = sourceTailKey(doc?.metadata?.source_url || doc?.metadata?.source_name || "");
                               if (key) footnoteByKey.set(key, i + 1);
@@ -563,14 +573,14 @@ export default function Home() {
                                   const rawHref = props.href || "";
                                   const href = normalizeSourceRef(rawHref);
                                   const hrefTail = sourceTailKey(rawHref);
-                                  const sourceListIndex = docsToDisplay.findIndex((doc: any) => {
+                                  const sourceListIndex = citationDocs.findIndex((doc: any) => {
                                     const docKey = getSourceKey(doc);
                                     const docTail = sourceTailKey(doc?.metadata?.source_url || doc?.metadata?.source_name || "");
                                     return (href && docKey === href) || (hrefTail && docTail === hrefTail);
                                   });
                                   if (sourceListIndex >= 0) {
                                     const n = footnoteByKey.get(href) || footnoteByKey.get(hrefTail) || (sourceListIndex + 1);
-                                    const sourceDoc = docsToDisplay[sourceListIndex];
+                                    const sourceDoc = citationDocs[sourceListIndex];
                                     const org = String(sourceDoc?.metadata?.source_organization || "Unknown").trim() || "Unknown";
                                     const year = sourceYear(sourceDoc);
                                     const title = String(sourceDoc?.metadata?.source_name || "Untitled").trim() || "Untitled";
@@ -595,7 +605,7 @@ export default function Home() {
                                           setSourceDetail({
                                             msgIndex: idx,
                                             sourceIndex: sourceListIndex,
-                                            doc: docsToDisplay[sourceListIndex],
+                                            doc: citationDocs[sourceListIndex],
                                           });
                                         }}
                                         aria-label={`Open source ${n}`}
@@ -630,7 +640,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {msg.context && msg.context.length > 0 && (
+                  {hasSources && (
                     <div className="flex items-center gap-2 mb-2 mt-4 pl-6 max-w-3xl w-full">
                       {/* COPY */}
                       <button
@@ -664,14 +674,14 @@ export default function Home() {
                     </div>
                   )}
 
-                  {showContext === idx && msg.context && (
+                  {showContext === idx && hasSources && (
                     <div>
                         <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                         <FolderSearch className="w-4 h-4" />
                         Retrieved Research & Policy Documents
                         </h3>
                         {(() => {
-                          const docsToDisplay = getDisplaySources(msg.context || []);
+                          const docsToDisplay = getDisplaySources(effectiveContext || []);
 
                           return (
                         <ul className="space-y-4">
@@ -707,7 +717,8 @@ export default function Home() {
                       </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div ref={bottomRef} /> {/* scroll anchor — keeps view at bottom during streaming */}
           </div>
