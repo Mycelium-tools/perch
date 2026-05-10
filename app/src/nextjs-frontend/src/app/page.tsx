@@ -21,6 +21,78 @@ const GENERATING_STATUS_MESSAGES = [
   "Creating a plan...",
 ];
 
+const getApiBaseUrl = () => {
+  const localServer = "http://localhost:8000";
+  const prodServer = "https://pawlicy-gpt-production.up.railway.app";
+  return process.env.NEXT_PUBLIC_API_URL
+    ? process.env.NEXT_PUBLIC_API_URL
+    : process.env.NODE_ENV === "production"
+      ? prodServer
+      : localServer;
+};
+
+const resolveSourceUrl = (rawUrl: string) => {
+  const url = (rawUrl || "").trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+
+  // Map relative/local pdf paths to backend static route.
+  if (url.toLowerCase().includes(".pdf")) {
+    const rawFilename = url.split("/").pop() || "";
+    if (!rawFilename) return "";
+    let filename = rawFilename;
+    try {
+      filename = decodeURIComponent(rawFilename);
+    } catch {
+      filename = rawFilename;
+    }
+    return `${getApiBaseUrl()}/pdfs/${encodeURIComponent(filename)}`;
+  }
+
+  return "";
+};
+
+const normalizeSourceRef = (rawRef: string) => {
+  const resolved = resolveSourceUrl(rawRef) || (rawRef || "").trim();
+  if (!resolved) return "";
+  let s = resolved;
+  try {
+    s = decodeURIComponent(s);
+  } catch {
+    // keep original string when decoding fails
+  }
+  s = s.toLowerCase();
+  s = s.split("#", 1)[0].split("?", 1)[0];
+  s = s.replace(/\/+$/, "");
+  return s;
+};
+
+const sourceTailKey = (rawRef: string) => {
+  const n = normalizeSourceRef(rawRef);
+  if (!n) return "";
+  const tail = n.split("/").pop() || n;
+  return tail.replace(/\.pdf$/, "");
+};
+
+const renderSnippetMarkdown = (text: string) => {
+  const raw = (text || "").replace(/\s+/g, " ").trim();
+  return raw || "No snippet available.";
+};
+
+const formatPublicationDate = (value: string) => {
+  const v = (value || "").trim();
+  if (!v || v === "1970-01-01") return "Unknown";
+  return v;
+};
+
+const sourceYear = (doc: any) => {
+  const publicationYear = String(doc?.metadata?.publication_year || "").trim();
+  if (/^\d{4}$/.test(publicationYear)) return publicationYear;
+  const publicationDate = formatPublicationDate(String(doc?.metadata?.publication_date || "").trim());
+  if (/^\d{4}/.test(publicationDate)) return publicationDate.slice(0, 4);
+  return "n.d.";
+};
+
 export default function Home() {
   const { chats, setChats, activeChatId, setActiveChatId, chatHistory, setChatHistory } = useChat();
   const [showContext, setShowContext] = useState<number | null>(null);
@@ -30,11 +102,17 @@ export default function Home() {
   const [statusMode, setStatusMode] = useState<"idle" | "searching" | "compiling">("idle");
   const [statusIndex, setStatusIndex] = useState(0);
   const [pendingSourceJump, setPendingSourceJump] = useState<{ msgIndex: number; sourceListIndex: number } | null>(null);
+  const [sourceDetail, setSourceDetail] = useState<{
+    msgIndex: number;
+    sourceIndex: number;
+    doc: any;
+  } | null>(null);
   const [footnotePreview, setFootnotePreview] = useState<{
     x: number;
     y: number;
-    sourceName: string;
-    snippet: string;
+    org: string;
+    year: string;
+    title: string;
   } | null>(null);
 
   // Sync chatHistory changes back to the active chat
@@ -146,6 +224,7 @@ export default function Home() {
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setAutoScrollEnabled(distanceFromBottom < 80);
+    if (footnotePreview) setFootnotePreview(null);
   };
 
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -195,13 +274,7 @@ export default function Home() {
     ]);
     setQuestion(""); // Clear input after submit
 
-    // if the environment variable exists, use it; otherwise, default to hardcoded local or production URL
-    const localServer = "http://localhost:8000";
-    const prodServer = "https://pawlicy-gpt-production.up.railway.app";
-
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL
-      ? process.env.NEXT_PUBLIC_API_URL
-      : process.env.NODE_ENV === 'production' ? prodServer : localServer;
+    const baseUrl = getApiBaseUrl();
 
     // Use streaming endpoint for token-by-token display
     const res = await fetch(`${baseUrl}/ask/stream`, {
@@ -219,6 +292,30 @@ export default function Home() {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let pendingText = "";
+    let flushTimer: number | null = null;
+
+    const flushPendingText = () => {
+      if (!pendingText) return;
+      const textToAppend = pendingText;
+      pendingText = "";
+      setChatHistory((prev) => {
+        const updated = [...prev];
+        const last = { ...updated[updated.length - 1] };
+        last.answer = last.pending ? textToAppend : last.answer + textToAppend;
+        last.pending = false;
+        updated[updated.length - 1] = last;
+        return updated;
+      });
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimer !== null) return;
+      flushTimer = window.setTimeout(() => {
+        flushTimer = null;
+        flushPendingText();
+      }, 75);
+    };
 
     try {
       while (true) {
@@ -233,11 +330,20 @@ export default function Home() {
           const event = JSON.parse(line.slice(6));
 
           if (event.type === "text") {
-            // Append each token; replace "Thinking..." on first chunk
+            // Buffer token updates so the UI remains clickable during streaming.
+            pendingText += event.content;
+            scheduleFlush();
+          } else if (event.type === "replace_answer") {
+            // Ensure buffered stream text is applied before final replacement.
+            if (flushTimer !== null) {
+              window.clearTimeout(flushTimer);
+              flushTimer = null;
+            }
+            flushPendingText();
             setChatHistory((prev) => {
               const updated = [...prev];
               const last = { ...updated[updated.length - 1] };
-              last.answer = last.pending ? event.content : last.answer + event.content;
+              last.answer = event.content || last.answer;
               last.pending = false;
               updated[updated.length - 1] = last;
               return updated;
@@ -260,6 +366,11 @@ export default function Home() {
         }
       }
     } finally {
+      if (flushTimer !== null) {
+        window.clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+      flushPendingText();
       setStatusMode("idle");
       setStreamStatus("");
     }
@@ -276,7 +387,7 @@ export default function Home() {
   };
 
   const getSourceKey = (doc: any) =>
-    (doc?.metadata?.source_url || doc?.metadata?.source_name || "unknown").toLowerCase();
+    normalizeSourceRef(doc?.metadata?.source_url || doc?.metadata?.source_name || "unknown");
 
   const getDisplaySources = (context: any[]) => {
     const byName = new Map<string, any>();
@@ -298,21 +409,6 @@ export default function Home() {
     setShowContext(msgIndex);
     setPendingSourceJump({ msgIndex, sourceListIndex });
   };
-
-  const showFootnotePreview = (evt: React.MouseEvent<HTMLButtonElement>, doc: any) => {
-    const rect = evt.currentTarget.getBoundingClientRect();
-    const sourceName = doc?.metadata?.source_name || "Untitled";
-    const raw = (doc?.page_content || "").replace(/\s+/g, " ").trim();
-    const snippet = raw.length > 240 ? `${raw.slice(0, 240)}...` : raw;
-    setFootnotePreview({
-      x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollY + 8,
-      sourceName,
-      snippet,
-    });
-  };
-
-  const hideFootnotePreview = () => setFootnotePreview(null);
 
   useEffect(() => {
     if (!pendingSourceJump) return;
@@ -340,6 +436,12 @@ export default function Home() {
 
     window.requestAnimationFrame(tryScroll);
   }, [pendingSourceJump, showContext]);
+
+  useEffect(() => {
+    const onWindowScroll = () => setFootnotePreview(null);
+    window.addEventListener("scroll", onWindowScroll, true);
+    return () => window.removeEventListener("scroll", onWindowScroll, true);
+  }, []);
 
 
   return (
@@ -387,7 +489,14 @@ export default function Home() {
             className="flex-1 overflow-y-auto px-4 pb-60"
           >
             <div className="flex flex-col gap-6 max-w-5xl mx-auto">
-              {chatHistory.map((msg, idx) => (
+              {chatHistory.map((msg, idx) => {
+                const isLatestMsg = idx === chatHistory.length - 1;
+                const isActivelyStreamingMsg = isLatestMsg && statusMode !== "idle";
+                const effectiveContext = (msg.context && msg.context.length > 0)
+                  ? msg.context
+                  : (isActivelyStreamingMsg ? (context || []) : []);
+                const hasSources = effectiveContext.length > 0;
+                return (
                 <div key={idx} ref={idx === chatHistory.length - 1 ? lastMsgRef : null}>
                   {/* User query bubble */}
                   <div className="flex justify-end my-8">
@@ -408,10 +517,16 @@ export default function Home() {
                       ) : (
                         <div>
                           {(() => {
-                            const docsToDisplay = getDisplaySources(msg.context || []);
+                            // Use full retrieved context for citation matching so footnote links stay stable
+                            // even when display sources are de-duplicated.
+                            const citationDocs = effectiveContext || [];
+                            const docsToDisplay = getDisplaySources(effectiveContext || []);
                             const footnoteByKey = new Map<string, number>();
-                            docsToDisplay.forEach((doc: any, i: number) => {
-                              footnoteByKey.set(getSourceKey(doc), i + 1);
+                            citationDocs.forEach((doc: any, i: number) => {
+                              const key = getSourceKey(doc);
+                              const tail = sourceTailKey(doc?.metadata?.source_url || doc?.metadata?.source_name || "");
+                              if (key) footnoteByKey.set(key, i + 1);
+                              if (tail) footnoteByKey.set(tail, i + 1);
                             });
 
                             console.log('Raw answer:', msg.answer);
@@ -455,19 +570,46 @@ export default function Home() {
                                 li: ({node, ...props}) => <li className="mb-1 [&>p]:inline" {...props} />,
                                 strong: ({node, ...props}) => <strong className="font-bold text-gray-900" {...props} />,
                                 a: ({node, ...props}) => {
-                                  const href = (props.href || "").toLowerCase();
-                                  const sourceListIndex = docsToDisplay.findIndex((doc: any) => getSourceKey(doc) === href);
+                                  const rawHref = props.href || "";
+                                  const href = normalizeSourceRef(rawHref);
+                                  const hrefTail = sourceTailKey(rawHref);
+                                  const sourceListIndex = citationDocs.findIndex((doc: any) => {
+                                    const docKey = getSourceKey(doc);
+                                    const docTail = sourceTailKey(doc?.metadata?.source_url || doc?.metadata?.source_name || "");
+                                    return (href && docKey === href) || (hrefTail && docTail === hrefTail);
+                                  });
                                   if (sourceListIndex >= 0) {
-                                    const n = footnoteByKey.get(href) || (sourceListIndex + 1);
+                                    const n = footnoteByKey.get(href) || footnoteByKey.get(hrefTail) || (sourceListIndex + 1);
+                                    const sourceDoc = citationDocs[sourceListIndex];
+                                    const org = String(sourceDoc?.metadata?.source_organization || "Unknown").trim() || "Unknown";
+                                    const year = sourceYear(sourceDoc);
+                                    const title = String(sourceDoc?.metadata?.source_name || "Untitled").trim() || "Untitled";
                                     return (
                                       <button
                                         type="button"
                                         className="inline-flex items-center justify-center align-super text-xs leading-none text-blue-700 underline hover:text-blue-900"
-                                        onClick={() => jumpToSource(idx, sourceListIndex)}
-                                        onMouseEnter={(e) => showFootnotePreview(e, docsToDisplay[sourceListIndex])}
-                                        onMouseLeave={hideFootnotePreview}
+                                        onMouseEnter={(e) => {
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setFootnotePreview({
+                                            x: rect.left + rect.width / 2,
+                                            y: rect.top - 8,
+                                            org,
+                                            year,
+                                            title,
+                                          });
+                                        }}
+                                        onMouseLeave={() => setFootnotePreview(null)}
+                                        onClick={() => {
+                                          setFootnotePreview(null);
+                                          setShowContext(idx);
+                                          setSourceDetail({
+                                            msgIndex: idx,
+                                            sourceIndex: sourceListIndex,
+                                            doc: citationDocs[sourceListIndex],
+                                          });
+                                        }}
                                         aria-label={`Open source ${n}`}
-                                        title={`Source ${n}`}
+                                        title={`${org}, ${year} - ${title}`}
                                       >
                                         [{n}]
                                       </button>
@@ -480,6 +622,7 @@ export default function Home() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       {...props}
+                                      href={resolveSourceUrl(rawHref) || rawHref}
                                     />
                                   );
                                 },
@@ -497,7 +640,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {msg.context && msg.context.length > 0 && (
+                  {hasSources && (
                     <div className="flex items-center gap-2 mb-2 mt-4 pl-6 max-w-3xl w-full">
                       {/* COPY */}
                       <button
@@ -531,20 +674,20 @@ export default function Home() {
                     </div>
                   )}
 
-                  {showContext === idx && msg.context && (
+                  {showContext === idx && hasSources && (
                     <div>
                         <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                         <FolderSearch className="w-4 h-4" />
                         Retrieved Research & Policy Documents
                         </h3>
                         {(() => {
-                          const docsToDisplay = getDisplaySources(msg.context || []);
+                          const docsToDisplay = getDisplaySources(effectiveContext || []);
 
                           return (
                         <ul className="space-y-4">
                           {docsToDisplay.map((doc: any, cidx: number) => {
-                            const url = doc.metadata?.source_url || "";
-                            const isUrl = url.startsWith("http"); // Check if it's a web link or a file path
+                            const url = resolveSourceUrl(doc.metadata?.source_url || "");
+                            const isUrl = Boolean(url);
                             const content = (
                               <div id={`source-ref-${idx}-${cidx}`} className="font-bold text-gray-900">
                                 <span className="mr-2">[{cidx + 1}]</span>
@@ -557,7 +700,7 @@ export default function Home() {
                                     href={url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-200 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                                    className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
                                   >
                                     {content}
                                   </a>
@@ -574,19 +717,69 @@ export default function Home() {
                       </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div ref={bottomRef} /> {/* scroll anchor — keeps view at bottom during streaming */}
           </div>
         )}
 
-        {footnotePreview && (
-          <div
-            className="fixed z-50 max-w-md rounded-md border border-gray-200 bg-white p-3 shadow-lg"
-            style={{ left: footnotePreview.x, top: footnotePreview.y }}
-          >
-            <div className="text-xs font-semibold text-gray-900">{footnotePreview.sourceName}</div>
-            <div className="mt-1 text-xs text-gray-700">{footnotePreview.snippet || "No preview available."}</div>
+        {sourceDetail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+            <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
+              <div className="mb-2 flex items-start justify-between gap-4">
+                <div className="text-sm font-semibold text-gray-900">
+                  [{sourceDetail.sourceIndex + 1}] {sourceDetail.doc?.metadata?.source_name || "Untitled"}
+                </div>
+                <button
+                  type="button"
+                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                  onClick={() => setSourceDetail(null)}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="space-y-1 text-xs text-gray-700">
+                <div><span className="font-semibold">Organization:</span> {sourceDetail.doc?.metadata?.source_organization || "Unknown"}</div>
+                <div><span className="font-semibold">Publication date:</span> {formatPublicationDate(sourceDetail.doc?.metadata?.publication_date || "")}</div>
+                {(sourceDetail.doc?.metadata?.page_number || 0) > 0 && (
+                  <div><span className="font-semibold">Page:</span> {sourceDetail.doc?.metadata?.page_number}</div>
+                )}
+                <div className="break-all">
+                  <span className="font-semibold">URL:</span>{" "}
+                  {resolveSourceUrl(sourceDetail.doc?.metadata?.source_url || "") ? (
+                    <a
+                      href={resolveSourceUrl(sourceDetail.doc?.metadata?.source_url || "")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                    >
+                      URL
+                    </a>
+                  ) : (
+                    sourceDetail.doc?.metadata?.source_url || "N/A"
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-800">
+                <ReactMarkdown
+                  components={{
+                    a: ({node, ...props}) => (
+                      <a
+                        {...props}
+                        href={resolveSourceUrl(String(props.href || "")) || String(props.href || "")}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-700 underline decoration-2 underline-offset-2 hover:text-blue-900"
+                      />
+                    ),
+                    p: ({node, ...props}) => <p className="mb-1" {...props} />,
+                  }}
+                >
+                  {renderSnippetMarkdown(sourceDetail.doc?.page_content || "")}
+                </ReactMarkdown>
+              </div>
+            </div>
           </div>
         )}
 
@@ -656,6 +849,15 @@ export default function Home() {
             <Copy className="w-4 h-4" />
             <span className="text-sm font-medium">Copied to clipboard!</span>
           </div>
+        </div>
+      )}
+
+      {footnotePreview && (
+        <div
+          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-800 shadow-lg"
+          style={{ left: footnotePreview.x, top: footnotePreview.y }}
+        >
+          {footnotePreview.org}, {footnotePreview.year} - {footnotePreview.title}
         </div>
       )}
 

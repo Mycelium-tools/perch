@@ -67,6 +67,13 @@ class PineconeRetriever(BaseRetriever):
         # Map back to original Document objects to preserve metadata
         reranked_docs = []
         for result in response.results:
-            reranked_docs.append(documents[result.index])
+            doc = documents[result.index]
+            meta = doc.metadata or {}
+            # Backfill defaults so downstream prompt formatting is stable.
+            meta.setdefault("source_organization", "Unknown Organization")
+            meta.setdefault("publication_year", "n.d.")
+            meta.setdefault("page_number", 0)
+            doc.metadata = meta
+            reranked_docs.append(doc)
 
         return reranked_docs

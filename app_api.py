@@ -18,10 +18,14 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import json
 import time
 import os
+import re
+from pathlib import Path
+from urllib.parse import unquote, quote
 from app.src.rag.query import retrieval_chain  # retrieval chain from RAG pipeline
 
 
@@ -39,6 +43,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve local ingested PDFs so legacy source_url paths (e.g., ../pdfs/foo.pdf) can resolve.
+PDF_DIR = Path(__file__).resolve().parent / "app" / "src" / "rag" / "ingestion" / "pdfs"
+if PDF_DIR.exists():
+    app.mount("/pdfs", StaticFiles(directory=str(PDF_DIR)), name="pdfs")
+
 # In-memory store mapping session_id -> list of message dicts.
 # Resets on server restart; TODO: use a database for persistence in production.
 user_histories = {}
@@ -49,7 +58,6 @@ def _env_flag(name: str, default: int = 0) -> bool:
 DEBUG_ALL = _env_flag("PERCH_DEBUG", 0)
 DEBUG_RETRIEVAL = DEBUG_ALL or _env_flag("PERCH_RETRIEVAL_DEBUG", 0)
 DEBUG_TIMING = DEBUG_ALL or _env_flag("PERCH_TIMING_DEBUG", 0)
-
 
 def log_retrieved_docs(context_docs, *, header: str = ""):
     if header:
@@ -92,7 +100,6 @@ async def ask_question(request: Request):
         "input": user_input,
         "chat_history": history
     })
-
     history.append({"role": "user", "content": user_input})
     history.append({"role": "assistant", "content": result["answer"]})
     user_histories[session_id] = history
@@ -120,6 +127,7 @@ async def ask_question_stream(request: Request):
         context_docs = []
         full_answer = ""
         sent_docs_status = False
+        sent_sources_early = False
         docs_retrieved_at = None
         first_answer_token_at = None
 
@@ -130,6 +138,10 @@ async def ask_question_stream(request: Request):
                     docs_retrieved_at = time.perf_counter()
                     yield f"data: {json.dumps({'type': 'status', 'stage': 'docs_retrieved'})}\n\n"
                     sent_docs_status = True
+                if context_docs and not sent_sources_early:
+                    serialized_early = [{"metadata": d.metadata, "page_content": d.page_content} for d in context_docs]
+                    yield f"data: {json.dumps({'type': 'sources', 'context': serialized_early})}\n\n"
+                    sent_sources_early = True
                 if DEBUG_RETRIEVAL:
                     log_retrieved_docs(context_docs)
             if "answer" in chunk and chunk["answer"]:
